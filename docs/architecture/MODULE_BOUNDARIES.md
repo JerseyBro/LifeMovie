@@ -10,3 +10,30 @@
 | `analytics` | Event interface/providers | Business decisions |
 | `design_system` | Tokens and reusable visual components | Domain rules |
 | `apps/memory_app` | Composition, navigation, presentation | Platform API details |
+
+## Actual dependency graph
+
+```text
+memory_domain
+  <- media_library
+  <- memory_engine
+  <- ai_gateway
+  <- media_processing
+
+design_system
+analytics
+
+apps/memory_app
+  -> analytics
+  -> ai_gateway
+  -> design_system
+  -> media_library
+  -> memory_domain
+  -> memory_engine
+```
+
+`memory_engine` no longer depends on `media_library`; both depend on `memory_domain`. `design_system` has no business dependency. iOS PhotoKit and SQLite platform details are isolated behind `media_library` and the app composition root.
+
+## Public API surface
+
+Consumers should import `package:media_library/media_library.dart`, `package:memory_engine/memory_engine.dart` and `package:memory_domain/memory_domain.dart`. Public media APIs live in `media_repository.dart` and `media_index.dart`; external packages should not import `src/` paths.

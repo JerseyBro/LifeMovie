@@ -13,6 +13,7 @@ class MediaAsset {
     required this.id,
     required this.type,
     this.creationDate,
+    this.modificationDate,
     this.duration,
     this.width,
     this.height,
@@ -20,10 +21,12 @@ class MediaAsset {
     this.isFavorite = false,
     this.isLivePhoto = false,
     this.localIdentifier,
+    this.personIds = const [],
   });
   final String id;
   final MediaType type;
   final DateTime? creationDate;
+  final DateTime? modificationDate;
   final Duration? duration;
   final int? width;
   final int? height;
@@ -31,6 +34,7 @@ class MediaAsset {
   final bool isFavorite;
   final bool isLivePhoto;
   final String? localIdentifier;
+  final List<String> personIds;
 }
 
 class Person {
@@ -67,7 +71,7 @@ class DateTimeRange {
   Duration get duration => end.difference(start);
 }
 
-enum MemoryCandidateType { dateCluster, samePlace, yearRecap }
+enum MemoryCandidateType { dateCluster, samePlace, yearRecap, personTimeline }
 
 class MemoryCandidate {
   const MemoryCandidate({

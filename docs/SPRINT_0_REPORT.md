@@ -34,3 +34,7 @@
 2. Add iOS integration tests with a controlled photo-library fixture and verify permission changes after revocation/additions.
 3. Persist `MediaIndex` with a migration-ready local database.
 4. Decide the first product hypothesis before adding more rules or story generation.
+
+## Follow-up
+
+Sprint 0.5 addresses the first three technical next steps with real PhotoKit metadata fetches, thumbnail requests, Drift/SQLite persistence, reconciliation and synthetic vertical-slice/performance tests. The original Sprint 0 report is kept as the historical V0 baseline; see `docs/SPRINT_0_5_REPORT.md` for current acceptance status.

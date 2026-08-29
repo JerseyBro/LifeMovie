@@ -1,0 +1,54 @@
+import 'package:drift/native.dart';
+import 'package:media_library/media_library.dart';
+import 'package:memory_domain/memory_domain.dart';
+import 'package:memory_engine/memory_engine.dart';
+import 'package:flutter_test/flutter_test.dart';
+
+void main() {
+  test(
+    'synthetic PhotoKit-like data reaches ranked memory candidates',
+    () async {
+      final index = PersistentMediaIndex.fromExecutor(NativeDatabase.memory());
+      final repository = MockMediaRepository(_syntheticAssets(120));
+
+      final reconciliation = await index.reconcile(repository, batchSize: 25);
+      final assets = await index.allAssets(limit: 200);
+      final context = MemoryContext(assets: assets);
+      final candidates = await MemoryEngine(
+        rules: const [
+          DateClusterRule(),
+          SamePlaceRule(),
+          YearRecapRule(),
+          PersonTimelineRule(),
+        ],
+      ).discover(context);
+      final ranked = const WeightedMemoryRanker().rank(candidates, context);
+
+      expect(reconciliation.inserted, 120);
+      expect(await index.count(), 120);
+      expect(ranked, isNotEmpty);
+      expect(ranked.first.score, greaterThan(0));
+      expect(ranked.first.reasons, isNotEmpty);
+      await index.close();
+    },
+  );
+}
+
+List<MediaAsset> _syntheticAssets(int count) => List.generate(count, (i) {
+  final day = 1 + (i % 24);
+  final year = 2024 + (i % 3);
+  final isVideo = i % 8 == 0;
+  return MediaAsset(
+    id: 'synthetic-$i',
+    localIdentifier: 'synthetic-$i',
+    type: isVideo ? MediaType.video : MediaType.image,
+    creationDate: DateTime(year, 8, day),
+    modificationDate: DateTime(year, 8, day, 12),
+    duration: isVideo ? const Duration(seconds: 18) : null,
+    width: 1200,
+    height: 900,
+    location: GeoPoint(22.5 + (i % 3) * .03, 114.0 + (i % 3) * .03),
+    isFavorite: i % 19 == 0,
+    personIds: i % 11 == 0 ? const ['synthetic-person'] : const [],
+  );
+});

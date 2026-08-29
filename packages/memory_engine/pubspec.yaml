@@ -6,7 +6,5 @@ environment:
 dependencies:
   memory_domain:
     path: ../memory_domain
-  media_library:
-    path: ../media_library
 dev_dependencies:
   test: ^1.25.0

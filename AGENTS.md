@@ -15,9 +15,18 @@ Build an AI Native personal memory app that helps people rediscover stories alre
 
 `apps/memory_app` is the composition root. `memory_domain` has no Flutter dependency. `media_library` owns normalized media and permission APIs. `memory_engine` owns candidates and ranking. `ai_gateway`, `media_processing`, and `analytics` are replaceable boundaries.
 
-## Forbidden in Sprint 0
+## Forbidden in Sprint 0 / 0.5
 
 No account system, family sharing, cloud album, payment, complex AI, identity-confirmed face recognition, full editor, marketplace, social feed, or real user media/API keys in the repository.
+
+## Sprint 0.5 implementation rules
+
+- Real iOS data must flow through `PhotoKitMediaRepository`, normalized `MediaAsset`, local `PersistentMediaIndex`, `MemoryRule` plugins and `MemoryRanker`.
+- PhotoKit types, raw image objects and AV assets stay out of Dart domain models.
+- `localIdentifier` is the stable media identity in the database.
+- Limited Library changes must be reconciled; do not assume accessible assets are permanent.
+- Developer diagnostics must avoid exact GPS, file paths, raw media exports and person identity logs.
+- True device validation must be reported separately from automated build/test results.
 
 ## Tests and style
 

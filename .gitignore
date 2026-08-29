@@ -9,4 +9,4 @@ coverage/
 DerivedData/
 Pods/
 Podfile.lock
-
+**/.flutter-plugins-dependencies
