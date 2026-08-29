@@ -1,0 +1,5 @@
+name: ai_memory_workspace
+packages:
+  - apps/**
+  - packages/**
+

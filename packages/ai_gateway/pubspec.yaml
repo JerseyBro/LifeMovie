@@ -1,0 +1,9 @@
+name: ai_gateway
+description: Swappable AI provider boundary.
+publish_to: none
+environment:
+  sdk: '>=3.8.0 <4.0.0'
+dependencies:
+  memory_domain:
+    path: ../memory_domain
+

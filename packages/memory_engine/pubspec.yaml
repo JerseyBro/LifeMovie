@@ -1,0 +1,12 @@
+name: memory_engine
+description: Plugin-based memory discovery and ranking.
+publish_to: none
+environment:
+  sdk: '>=3.8.0 <4.0.0'
+dependencies:
+  memory_domain:
+    path: ../memory_domain
+  media_library:
+    path: ../media_library
+dev_dependencies:
+  test: ^1.25.0

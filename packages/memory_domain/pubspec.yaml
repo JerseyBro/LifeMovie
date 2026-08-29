@@ -1,0 +1,7 @@
+name: memory_domain
+description: Platform-independent AI Memory domain models.
+publish_to: none
+environment:
+  sdk: '>=3.8.0 <4.0.0'
+dev_dependencies:
+  test: ^1.25.0

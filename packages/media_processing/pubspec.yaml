@@ -1,0 +1,9 @@
+name: media_processing
+description: Movie preview and rendering boundary.
+publish_to: none
+environment:
+  sdk: '>=3.8.0 <4.0.0'
+dependencies:
+  memory_domain:
+    path: ../memory_domain
+

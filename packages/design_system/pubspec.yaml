@@ -1,0 +1,9 @@
+name: design_system
+description: Neutral visual tokens for the Memory app.
+publish_to: none
+environment:
+  sdk: '>=3.8.0 <4.0.0'
+dependencies:
+  flutter:
+    sdk: flutter
+
