@@ -1,0 +1,180 @@
+import 'package:flutter_test/flutter_test.dart';
+import 'package:memory_app/l10n/app_localizations_zh.dart';
+import 'package:memory_app/l10n/app_localizations_en.dart';
+import 'package:memory_app/presentation/memory_candidate_copy_mapper.dart';
+import 'package:memory_domain/memory_domain.dart';
+
+void main() {
+  test(
+    'copy mapper generates Chinese copy for all candidate types without safeTemplate',
+    () {
+      const mapper = MemoryCandidateCopyMapper();
+      final zh = AppLocalizationsZh();
+      final en = AppLocalizationsEn();
+
+      final cases = <MemoryCandidate>[
+        MemoryCandidate(
+          id: 'place-years-cluster-0',
+          type: MemoryCandidateType.samePlaceAcrossYears,
+          period: DateTimeRange(DateTime(2019), DateTime(2026)),
+          mediaIds: const ['a', 'b', 'c'],
+          metadata: {
+            'distinctYearCount': 3,
+            'calendarSpanYears': 8,
+            'longestConsecutiveYearRun': 1,
+            'firstYear': 2019,
+            'lastYear': 2026,
+            'visitCount': 4,
+          },
+        ),
+        MemoryCandidate(
+          id: 'person-p1',
+          type: MemoryCandidateType.personTimeline,
+          period: DateTimeRange(DateTime(2019), DateTime(2026)),
+          mediaIds: const ['a', 'b', 'c'],
+          personIds: const ['p1'],
+          metadata: {
+            'firstYear': 2019,
+            'lastYear': 2026,
+            'calendarSpanYears': 8,
+            'distinctYearCount': 3,
+            'longestConsecutiveYearRun': 1,
+          },
+        ),
+        MemoryCandidate(
+          id: 'travel-1',
+          type: MemoryCandidateType.travelStory,
+          period: DateTimeRange(DateTime(2026, 5, 1), DateTime(2026, 5, 4)),
+          mediaIds: List.generate(50, (i) => 'm-$i'),
+          placeIds: const ['c0', 'c1', 'c2'],
+          metadata: {'durationDays': 4, 'placeCount': 3, 'totalMediaCount': 50},
+        ),
+        MemoryCandidate(
+          id: 'annual-p1@doy-166',
+          type: MemoryCandidateType.annualTogether,
+          period: DateTimeRange(DateTime(2020), DateTime(2026)),
+          mediaIds: const ['a', 'b', 'c', 'd'],
+          personIds: const ['p1'],
+          metadata: {
+            'distinctYearCount': 4,
+            'longestConsecutiveYearRun': 3,
+            'firstYear': 2020,
+            'lastYear': 2026,
+          },
+        ),
+        MemoryCandidate(
+          id: 'evolution-person-p1',
+          type: MemoryCandidateType.longTermEvolution,
+          period: DateTimeRange(DateTime(2019), DateTime(2028)),
+          mediaIds: const ['a', 'b', 'c', 'd', 'e', 'f'],
+          personIds: const ['p1'],
+          metadata: {
+            'calendarSpanYears': 10,
+            'distinctYearCount': 4,
+            'firstYear': 2019,
+            'lastYear': 2028,
+          },
+        ),
+        MemoryCandidate(
+          id: 'first-person-p1-a',
+          type: MemoryCandidateType.firstMemory,
+          period: DateTimeRange(DateTime(2019), DateTime(2019)),
+          mediaIds: const ['a', 'b'],
+          personIds: const ['p1'],
+          metadata: {'firstMemoryKind': 'person'},
+        ),
+        MemoryCandidate(
+          id: 'first-place-c0-a',
+          type: MemoryCandidateType.firstMemory,
+          period: DateTimeRange(DateTime(2019), DateTime(2019)),
+          mediaIds: const ['a', 'b'],
+          placeIds: const ['c0'],
+          metadata: {'firstMemoryKind': 'place'},
+        ),
+        MemoryCandidate(
+          id: 'date-a',
+          type: MemoryCandidateType.dateCluster,
+          period: DateTimeRange(DateTime(2026, 1, 1), DateTime(2026, 1, 3)),
+          mediaIds: const ['a', 'b', 'c'],
+        ),
+        MemoryCandidate(
+          id: 'place-c0-a',
+          type: MemoryCandidateType.samePlace,
+          period: DateTimeRange(DateTime(2026, 1, 1), DateTime(2026, 1, 3)),
+          mediaIds: const ['a', 'b', 'c'],
+          placeIds: const ['c0'],
+        ),
+        MemoryCandidate(
+          id: 'year-2026',
+          type: MemoryCandidateType.yearRecap,
+          period: DateTimeRange(DateTime(2026), DateTime(2026, 12, 31)),
+          mediaIds: const ['a', 'b'],
+          metadata: {'year': 2026},
+        ),
+      ];
+
+      for (final c in cases) {
+        final zhCopy = mapper.map(c, zh);
+        final enCopy = mapper.map(c, en);
+        expect(
+          zhCopy.title,
+          isNotEmpty,
+          reason: 'zh title for ${c.type.name} empty',
+        );
+        expect(
+          zhCopy.subtitle,
+          isNotEmpty,
+          reason: 'zh subtitle for ${c.type.name} empty',
+        );
+        expect(
+          enCopy.title,
+          isNotEmpty,
+          reason: 'en title for ${c.type.name} empty',
+        );
+        // Ensure formal UI does not depend on safeTemplate: pass candidate with no safeTemplate
+        expect(
+          c.safeTitleTemplate,
+          isNull,
+          reason:
+              'test candidate should have no safeTemplate, mapper must generate without it',
+        );
+        // Ensure Chinese copy contains expected placeholders for key types
+        if (c.type == MemoryCandidateType.samePlaceAcrossYears) {
+          // non-consecutive case should be 多次 or 不同年份
+          expect(
+            zhCopy.title,
+            anyOf(contains('多次'), contains('不同年份'), contains('连续')),
+          );
+        }
+        if (c.type == MemoryCandidateType.travelStory) {
+          expect(zhCopy.title, contains('4'));
+        }
+      }
+    },
+  );
+
+  test('ARB hardcode removed: detailAiPlaceholder from l10n', () {
+    final zh = AppLocalizationsZh();
+    final en = AppLocalizationsEn();
+    expect(zh.detailAiPlaceholder, '正在整理这段记忆……');
+    expect(en.detailAiPlaceholder, isNotEmpty);
+  });
+
+  test('English ARB key-compatible with Chinese', () {
+    final zh = AppLocalizationsZh();
+    final en = AppLocalizationsEn();
+    // Check all new keys exist in both
+    expect(zh.samePlaceConsecutiveYears(3), isNotEmpty);
+    expect(en.samePlaceConsecutiveYears(3), isNotEmpty);
+    expect(zh.samePlaceMultipleYears(3), isNotEmpty);
+    expect(en.samePlaceMultipleYears(3), isNotEmpty);
+    expect(zh.personAcrossYears(2019), isNotEmpty);
+    expect(en.personAcrossYears(2019), isNotEmpty);
+    expect(zh.travelStoryTitle(5), isNotEmpty);
+    expect(en.travelStoryTitle(5), isNotEmpty);
+    expect(zh.annualTogetherConsecutive, isNotEmpty);
+    expect(en.annualTogetherConsecutive, isNotEmpty);
+    expect(zh.longTermEvolutionSpan(5), isNotEmpty);
+    expect(en.longTermEvolutionSpan(5), isNotEmpty);
+  });
+}

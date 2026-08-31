@@ -96,4 +96,89 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get debugOpenLab => 'Open Memory Lab';
+
+  @override
+  String samePlaceConsecutiveYears(int count) {
+    return 'You have returned here for $count consecutive years.';
+  }
+
+  @override
+  String samePlaceMultipleYears(int count) {
+    return 'This place appears in $count different years in your library.';
+  }
+
+  @override
+  String get samePlaceRepeated =>
+      'Over the years, you have returned here many times.';
+
+  @override
+  String personAcrossYears(int firstYear) {
+    return 'This person first appeared in $firstYear.';
+  }
+
+  @override
+  String personSpanYears(int span) {
+    return 'This person spans $span years in your library.';
+  }
+
+  @override
+  String get firstPersonMemory =>
+      'Your earliest photos with this person in the library.';
+
+  @override
+  String get firstPlaceMemory =>
+      'Your earliest photos at this place in the library.';
+
+  @override
+  String travelStoryTitle(int days) {
+    return 'These $days days look like a complete journey.';
+  }
+
+  @override
+  String travelStorySubtitle(int places, int count) {
+    return '$places places · $count photos and videos';
+  }
+
+  @override
+  String get annualTogetherConsecutive =>
+      'Around this time each year, this person appears.';
+
+  @override
+  String get annualTogetherRepeated =>
+      'Around this time over the years, this person appears many times.';
+
+  @override
+  String longTermEvolutionSpan(int span) {
+    return 'These photos span $span years.';
+  }
+
+  @override
+  String longTermEvolutionMultipleYears(int count) {
+    return 'This place appears in $count years.';
+  }
+
+  @override
+  String get detailAiPlaceholder => 'Organizing this memory…';
+
+  @override
+  String get dateClusterTitle => 'These days left many photos.';
+
+  @override
+  String get samePlaceTitle => 'A memory worth revisiting here.';
+
+  @override
+  String yearRecapTitle(int year) {
+    return '$year was full of moments worth revisiting.';
+  }
+
+  @override
+  String get longTermEvolutionTitle => 'These photos record change over time.';
+
+  @override
+  String get annualTogetherTitle =>
+      'Around this time each year, a similar set appears.';
+
+  @override
+  String get samePlaceAcrossYearsTitle =>
+      'You have returned here across years.';
 }

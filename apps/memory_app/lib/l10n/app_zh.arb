@@ -59,5 +59,91 @@
   "detailLocationHint": "包含地点线索",
   "personTimelineTitle": "这些年",
   "memoryLab": "Memory Lab",
-  "debugOpenLab": "打开 Memory Lab"
+  "debugOpenLab": "打开 Memory Lab",
+  "samePlaceConsecutiveYears": "你已经连续 {count} 年来到这里。",
+  "@samePlaceConsecutiveYears": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "samePlaceMultipleYears": "这个地方在 {count} 个不同年份出现在你的相册里。",
+  "@samePlaceMultipleYears": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "samePlaceRepeated": "这些年，你已经多次回到这里。",
+  "personAcrossYears": "这个人从 {firstYear} 年开始出现在你的镜头里。",
+  "@personAcrossYears": {
+    "placeholders": {
+      "firstYear": {
+        "type": "int"
+      }
+    }
+  },
+  "personSpanYears": "这个人已经在你的相册里跨越了 {span} 年。",
+  "@personSpanYears": {
+    "placeholders": {
+      "span": {
+        "type": "int"
+      }
+    }
+  },
+  "firstPersonMemory": "这是相册里最早的一组你们合照。",
+  "firstPlaceMemory": "这是相册里最早记录这个地方的一组照片。",
+  "travelStoryTitle": "这 {days} 天，看起来像一段完整的旅程。",
+  "@travelStoryTitle": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "travelStorySubtitle": "{places} 个地点 · {count} 张照片和视频",
+  "@travelStorySubtitle": {
+    "placeholders": {
+      "places": {
+        "type": "int"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "annualTogetherConsecutive": "每年差不多这个时候，这个人都会出现在你的照片里。",
+  "annualTogetherRepeated": "这些年，差不多这个时候，这个人多次出现在你的照片里。",
+  "longTermEvolutionSpan": "这些照片跨越了 {span} 年。",
+  "@longTermEvolutionSpan": {
+    "placeholders": {
+      "span": {
+        "type": "int"
+      }
+    }
+  },
+  "longTermEvolutionMultipleYears": "这个地方在你的相册里出现了 {count} 个年份。",
+  "@longTermEvolutionMultipleYears": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "detailAiPlaceholder": "正在整理这段记忆……",
+  "dateClusterTitle": "这几天留下了很多照片。",
+  "samePlaceTitle": "这里有一段值得回看的记忆。",
+  "yearRecapTitle": "{year} 年，有很多值得回看的片段。",
+  "@yearRecapTitle": {
+    "placeholders": {
+      "year": {
+        "type": "int"
+      }
+    }
+  },
+  "longTermEvolutionTitle": "这些照片记录了一段时间的变化。",
+  "annualTogetherTitle": "每年差不多这个时候，都有一组相似的记录。",
+  "samePlaceAcrossYearsTitle": "你已经连续几年来到这里。"
 }

@@ -253,6 +253,126 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'打开 Memory Lab'**
   String get debugOpenLab;
+
+  /// No description provided for @samePlaceConsecutiveYears.
+  ///
+  /// In zh, this message translates to:
+  /// **'你已经连续 {count} 年来到这里。'**
+  String samePlaceConsecutiveYears(int count);
+
+  /// No description provided for @samePlaceMultipleYears.
+  ///
+  /// In zh, this message translates to:
+  /// **'这个地方在 {count} 个不同年份出现在你的相册里。'**
+  String samePlaceMultipleYears(int count);
+
+  /// No description provided for @samePlaceRepeated.
+  ///
+  /// In zh, this message translates to:
+  /// **'这些年，你已经多次回到这里。'**
+  String get samePlaceRepeated;
+
+  /// No description provided for @personAcrossYears.
+  ///
+  /// In zh, this message translates to:
+  /// **'这个人从 {firstYear} 年开始出现在你的镜头里。'**
+  String personAcrossYears(int firstYear);
+
+  /// No description provided for @personSpanYears.
+  ///
+  /// In zh, this message translates to:
+  /// **'这个人已经在你的相册里跨越了 {span} 年。'**
+  String personSpanYears(int span);
+
+  /// No description provided for @firstPersonMemory.
+  ///
+  /// In zh, this message translates to:
+  /// **'这是相册里最早的一组你们合照。'**
+  String get firstPersonMemory;
+
+  /// No description provided for @firstPlaceMemory.
+  ///
+  /// In zh, this message translates to:
+  /// **'这是相册里最早记录这个地方的一组照片。'**
+  String get firstPlaceMemory;
+
+  /// No description provided for @travelStoryTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'这 {days} 天，看起来像一段完整的旅程。'**
+  String travelStoryTitle(int days);
+
+  /// No description provided for @travelStorySubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'{places} 个地点 · {count} 张照片和视频'**
+  String travelStorySubtitle(int places, int count);
+
+  /// No description provided for @annualTogetherConsecutive.
+  ///
+  /// In zh, this message translates to:
+  /// **'每年差不多这个时候，这个人都会出现在你的照片里。'**
+  String get annualTogetherConsecutive;
+
+  /// No description provided for @annualTogetherRepeated.
+  ///
+  /// In zh, this message translates to:
+  /// **'这些年，差不多这个时候，这个人多次出现在你的照片里。'**
+  String get annualTogetherRepeated;
+
+  /// No description provided for @longTermEvolutionSpan.
+  ///
+  /// In zh, this message translates to:
+  /// **'这些照片跨越了 {span} 年。'**
+  String longTermEvolutionSpan(int span);
+
+  /// No description provided for @longTermEvolutionMultipleYears.
+  ///
+  /// In zh, this message translates to:
+  /// **'这个地方在你的相册里出现了 {count} 个年份。'**
+  String longTermEvolutionMultipleYears(int count);
+
+  /// No description provided for @detailAiPlaceholder.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在整理这段记忆……'**
+  String get detailAiPlaceholder;
+
+  /// No description provided for @dateClusterTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'这几天留下了很多照片。'**
+  String get dateClusterTitle;
+
+  /// No description provided for @samePlaceTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'这里有一段值得回看的记忆。'**
+  String get samePlaceTitle;
+
+  /// No description provided for @yearRecapTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'{year} 年，有很多值得回看的片段。'**
+  String yearRecapTitle(int year);
+
+  /// No description provided for @longTermEvolutionTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'这些照片记录了一段时间的变化。'**
+  String get longTermEvolutionTitle;
+
+  /// No description provided for @annualTogetherTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'每年差不多这个时候，都有一组相似的记录。'**
+  String get annualTogetherTitle;
+
+  /// No description provided for @samePlaceAcrossYearsTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'你已经连续几年来到这里。'**
+  String get samePlaceAcrossYearsTitle;
 }
 
 class _AppLocalizationsDelegate

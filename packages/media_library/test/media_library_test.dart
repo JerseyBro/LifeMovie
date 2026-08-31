@@ -195,6 +195,35 @@ void main() {
     expect(await index.count(), 0);
     await index.close();
   });
+
+  test(
+    'allAssetsPaged returns full dataset beyond 50K without silent truncation',
+    () async {
+      final index = PersistentMediaIndex.memory();
+      final assets = _syntheticAssets(50001);
+      await index.upsertAssets(assets);
+      expect(await index.count(), 50001);
+      final viaPaged = await index.allAssetsPaged(batchSize: 10000);
+      expect(viaPaged.length, 50001);
+      final viaLimitAll = await index.allAssets(limit: null);
+      expect(viaLimitAll.length, 50001);
+      // Ensure old limit 50000 would truncate but paged does not
+      final truncated = await index.allAssets(limit: 50000);
+      expect(truncated.length, 50000);
+      expect(truncated.length, lessThan(viaPaged.length));
+      await index.close();
+    },
+  );
+
+  test('60K library paged read smoke', () async {
+    final index = PersistentMediaIndex.memory();
+    final assets = _syntheticAssets(60000);
+    await index.upsertAssets(assets);
+    expect(await index.count(), 60000);
+    final paged = await index.allAssetsPaged(batchSize: 15000);
+    expect(paged.length, 60000);
+    await index.close();
+  });
 }
 
 List<MediaAsset> _syntheticAssets(int count) => List.generate(count, (i) {

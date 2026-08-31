@@ -17,7 +17,9 @@ Build an AI Native personal memory app that helps people rediscover stories alre
 
 ## Current stage
 
-Sprint 0.8 Memory Intelligence Prototype.
+Sprint 0.8 Memory Intelligence Prototype + Sprint 0.8.1 Pre-Validation Correctness Fix (same branch `feat/memory-intelligence-v0.8`, no merge to main yet).
+
+Sprint 0.8.1 hardens year semantics (`YearMetrics`), distance-based location clustering, travel two-phase enrichment, evaluation opaque id, localization boundary (`MemoryCandidateCopyMapper` + ARB), and large-library paging — before real-device + 5–10 library validation. See `docs/SPRINT_0_8_1_FIX_REPORT.md`.
 
 The product is Simplified Chinese first. The immediate goal is not an AI video editor; it is Memory Discovery that can surface meaningful, surprising, safe and explainable stories from a local photo library.
 

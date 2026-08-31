@@ -82,6 +82,23 @@ Foundation device validation remains pending:
 
 Real user validation remains `PENDING REAL USER VALIDATION`.
 
+## Sprint 0.8.1 (Pre-Validation Correctness Fix — not a new Sprint, on same branch)
+
+See `docs/SPRINT_0_8_1_FIX_REPORT.md`. Sprint 0.8.1 hardens factual correctness, location accuracy, travel completeness, localization boundary, evaluation privacy and large-library completeness before 5–10 real-library validation. No new rule, no face/LLM/backend added. Changes:
+
+- `YearMetrics` corrects `连续 X 年` / `跨越 X 年` semantics (`distinctYearCount`/`calendarSpanYears`/`longestConsecutiveYearRun`).
+- Distance-based `LocationClusterConfig(radiusMeters:500)` replaces `toStringAsFixed(1)` in 5 rules.
+- `TravelStoryRule` two-phase enriches with all assets in window, emits `locationCoverage`.
+- `MemoryEvaluation` persists only opaque `eval-` id, never raw GPS/person/asset.
+- Presentation copy via `MemoryCandidateCopyMapper` + ARB placeholders; engine `safeTitleTemplate` deprecated; hard-code `正在整理这段记忆……` → `detailAiPlaceholder`.
+- `PersistentMediaIndex.allAssetsPaged` removes silent 50K cap, `main.dart` pages full library with warning.
+- Annual window uses circular `dayOfYear` distance with Dec31/Jan1 wrap.
+- Sensitivity guard documented as V0.1 keyword guard.
+
+Performance after 0.8.1 (median 3 runs, synthetic, in-memory SQLite): 1K top10 12ms / 10K 75ms / 50K 405ms (vs 0.8: 12/68/403), 60K smoke top10 594ms / 75K 715ms — no O(n²).
+
+All 0.8.1 gates passed, see `SPRINT_0_8_1_FIX_REPORT.md` §18. Device + real-user still pending, then `Real Device Validation + First WOW Memory User Validation`.
+
 ## Verdict
 
-Engineering work targets `PASS WITH REAL USER VALIDATION PENDING` if final automated verification passes. Full product PASS requires real user validation and Sprint 0.5 device validation.
+Engineering work targets `PASS WITH REAL USER VALIDATION PENDING` if final automated verification passes. Full product PASS requires real user validation and Sprint 0.5 device validation. Sprint 0.8.1 is `PASS WITH DEVICE + REAL USER VALIDATION PENDING` — ready for Review before real validation.

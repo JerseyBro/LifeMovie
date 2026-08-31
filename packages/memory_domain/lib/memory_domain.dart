@@ -95,7 +95,13 @@ class MemoryCandidate {
     this.score = 0,
     this.reasons = const [],
     this.metadata = const {},
+    @Deprecated(
+      'Use presentation copy mapper instead. Engine should not own final Chinese copy.',
+    )
     this.safeTitleTemplate,
+    @Deprecated(
+      'Use presentation copy mapper instead. Engine should not own final Chinese copy.',
+    )
     this.safeSubtitleTemplate,
   });
   final String id;
@@ -108,7 +114,9 @@ class MemoryCandidate {
   final double score;
   final List<String> reasons;
   final Map<String, Object?> metadata;
+  @Deprecated('Use presentation copy mapper instead.')
   final String? safeTitleTemplate;
+  @Deprecated('Use presentation copy mapper instead.')
   final String? safeSubtitleTemplate;
 
   MemoryCandidate withScore(double value) => MemoryCandidate(
@@ -138,8 +146,11 @@ class MemoryEvaluation {
     required this.sensitivity,
     this.labels = const [],
     required this.createdAt,
+    this.anonymousCandidateId,
   });
 
+  /// Opaque candidate identifier for persistence. Must not contain raw GPS,
+  /// person id, asset id or file path. Use [opaqueCandidateId] to derive.
   final String candidateId;
   final MemoryCandidateType ruleType;
   final int accuracy;
@@ -150,8 +161,55 @@ class MemoryEvaluation {
   final List<String> labels;
   final DateTime createdAt;
 
+  /// Explicit opaque alias. When set, this is persisted instead of exposing raw.
+  /// Kept for migration; [candidateId] should already be opaque after 0.8.1.
+  final String? anonymousCandidateId;
+
+  /// Stable opaque id for a raw candidate id. Uses FNV-1a 64 with app salt.
+  /// Result is 16-char hex, no raw coordinates or ids leak.
+  static String opaqueCandidateId(
+    String rawCandidateId,
+    MemoryCandidateType type,
+  ) {
+    const salt = 'LifeMovie-eval-v1';
+    final input = '${type.name}:$rawCandidateId:$salt';
+    var hash = 0xcbf29ce484222325;
+    const prime = 0x100000001b3;
+    for (final code in input.codeUnits) {
+      hash ^= code;
+      hash = (hash * prime) & 0xFFFFFFFFFFFFFFFF;
+    }
+    final hex = hash.toUnsigned(64).toRadixString(16).padLeft(16, '0');
+    return 'eval-$hex';
+  }
+
+  /// Convenience factory that hashes candidate.id automatically.
+  factory MemoryEvaluation.forCandidate(
+    MemoryCandidate candidate, {
+    required int accuracy,
+    required int meaningfulness,
+    required int surprise,
+    required int clarity,
+    required int sensitivity,
+    List<String> labels = const [],
+    required DateTime createdAt,
+  }) => MemoryEvaluation(
+    candidateId: opaqueCandidateId(candidate.id, candidate.type),
+    ruleType: candidate.type,
+    accuracy: accuracy,
+    meaningfulness: meaningfulness,
+    surprise: surprise,
+    clarity: clarity,
+    sensitivity: sensitivity,
+    labels: labels,
+    createdAt: createdAt,
+    anonymousCandidateId: opaqueCandidateId(candidate.id, candidate.type),
+  );
+
+  String get effectiveOpaqueId => anonymousCandidateId ?? candidateId;
+
   Map<String, Object?> toJson() => {
-    'candidateId': candidateId,
+    'candidateId': effectiveOpaqueId,
     'ruleType': ruleType.name,
     'accuracy': accuracy,
     'meaningfulness': meaningfulness,
@@ -160,11 +218,15 @@ class MemoryEvaluation {
     'sensitivity': sensitivity,
     'labels': labels,
     'createdAt': createdAt.toIso8601String(),
+    if (anonymousCandidateId != null)
+      'anonymousCandidateId': anonymousCandidateId,
   };
 
   static MemoryEvaluation fromJson(Map<String, Object?> json) =>
       MemoryEvaluation(
-        candidateId: json['candidateId']! as String,
+        candidateId:
+            (json['anonymousCandidateId'] as String?) ??
+            json['candidateId']! as String,
         ruleType: MemoryCandidateType.values.byName(
           json['ruleType']! as String,
         ),
@@ -175,6 +237,7 @@ class MemoryEvaluation {
         sensitivity: json['sensitivity']! as int,
         labels: (json['labels'] as List? ?? const []).cast<String>(),
         createdAt: DateTime.parse(json['createdAt']! as String),
+        anonymousCandidateId: json['anonymousCandidateId'] as String?,
       );
 }
 

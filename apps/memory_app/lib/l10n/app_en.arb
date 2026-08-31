@@ -59,5 +59,91 @@
   "detailLocationHint": "Location signals available",
   "personTimelineTitle": "Across the years",
   "memoryLab": "Memory Lab",
-  "debugOpenLab": "Open Memory Lab"
+  "debugOpenLab": "Open Memory Lab",
+  "samePlaceConsecutiveYears": "You have returned here for {count} consecutive years.",
+  "@samePlaceConsecutiveYears": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "samePlaceMultipleYears": "This place appears in {count} different years in your library.",
+  "@samePlaceMultipleYears": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "samePlaceRepeated": "Over the years, you have returned here many times.",
+  "personAcrossYears": "This person first appeared in {firstYear}.",
+  "@personAcrossYears": {
+    "placeholders": {
+      "firstYear": {
+        "type": "int"
+      }
+    }
+  },
+  "personSpanYears": "This person spans {span} years in your library.",
+  "@personSpanYears": {
+    "placeholders": {
+      "span": {
+        "type": "int"
+      }
+    }
+  },
+  "firstPersonMemory": "Your earliest photos with this person in the library.",
+  "firstPlaceMemory": "Your earliest photos at this place in the library.",
+  "travelStoryTitle": "These {days} days look like a complete journey.",
+  "@travelStoryTitle": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "travelStorySubtitle": "{places} places · {count} photos and videos",
+  "@travelStorySubtitle": {
+    "placeholders": {
+      "places": {
+        "type": "int"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "annualTogetherConsecutive": "Around this time each year, this person appears.",
+  "annualTogetherRepeated": "Around this time over the years, this person appears many times.",
+  "longTermEvolutionSpan": "These photos span {span} years.",
+  "@longTermEvolutionSpan": {
+    "placeholders": {
+      "span": {
+        "type": "int"
+      }
+    }
+  },
+  "longTermEvolutionMultipleYears": "This place appears in {count} years.",
+  "@longTermEvolutionMultipleYears": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "detailAiPlaceholder": "Organizing this memory…",
+  "dateClusterTitle": "These days left many photos.",
+  "samePlaceTitle": "A memory worth revisiting here.",
+  "yearRecapTitle": "{year} was full of moments worth revisiting.",
+  "@yearRecapTitle": {
+    "placeholders": {
+      "year": {
+        "type": "int"
+      }
+    }
+  },
+  "longTermEvolutionTitle": "These photos record change over time.",
+  "annualTogetherTitle": "Around this time each year, a similar set appears.",
+  "samePlaceAcrossYearsTitle": "You have returned here across years."
 }

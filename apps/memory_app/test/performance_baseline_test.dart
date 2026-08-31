@@ -30,6 +30,16 @@ void main() {
       }
     },
   );
+
+  test('Sprint 0.8.1 correctness smoke 60K/75K without silent cap', () async {
+    for (final size in [60000, 75000]) {
+      final result = await _runOnce(size);
+      print('PERF_SMOKE_V081 ${jsonEncode({'dataset_size': size, ...result})}');
+      expect(result['candidate_count'] as int, greaterThan(0));
+      expect(result['time_to_top_10_ms'] as int, lessThan(2000),
+          reason: '60K/75K should not explode with new clustering');
+    }
+  });
 }
 
 Future<Map<String, Object?>> _runOnce(int size) async {
@@ -64,7 +74,9 @@ Future<Map<String, Object?>> _runOnce(int size) async {
   final placeQuery = await _measure(
     () => index.byCoarsePlace(const GeoPoint(22.5, 114.0), limit: size),
   );
-  final indexedAssets = await index.allAssets(limit: size);
+  final indexedAssets = size > 50000
+      ? await index.allAssetsPaged(batchSize: 10000)
+      : await index.allAssets(limit: size);
   final context = MemoryContext(assets: indexedAssets);
 
   final ruleTimes = <String, int>{};

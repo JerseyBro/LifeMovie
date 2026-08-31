@@ -93,4 +93,82 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get debugOpenLab => '打开 Memory Lab';
+
+  @override
+  String samePlaceConsecutiveYears(int count) {
+    return '你已经连续 $count 年来到这里。';
+  }
+
+  @override
+  String samePlaceMultipleYears(int count) {
+    return '这个地方在 $count 个不同年份出现在你的相册里。';
+  }
+
+  @override
+  String get samePlaceRepeated => '这些年，你已经多次回到这里。';
+
+  @override
+  String personAcrossYears(int firstYear) {
+    return '这个人从 $firstYear 年开始出现在你的镜头里。';
+  }
+
+  @override
+  String personSpanYears(int span) {
+    return '这个人已经在你的相册里跨越了 $span 年。';
+  }
+
+  @override
+  String get firstPersonMemory => '这是相册里最早的一组你们合照。';
+
+  @override
+  String get firstPlaceMemory => '这是相册里最早记录这个地方的一组照片。';
+
+  @override
+  String travelStoryTitle(int days) {
+    return '这 $days 天，看起来像一段完整的旅程。';
+  }
+
+  @override
+  String travelStorySubtitle(int places, int count) {
+    return '$places 个地点 · $count 张照片和视频';
+  }
+
+  @override
+  String get annualTogetherConsecutive => '每年差不多这个时候，这个人都会出现在你的照片里。';
+
+  @override
+  String get annualTogetherRepeated => '这些年，差不多这个时候，这个人多次出现在你的照片里。';
+
+  @override
+  String longTermEvolutionSpan(int span) {
+    return '这些照片跨越了 $span 年。';
+  }
+
+  @override
+  String longTermEvolutionMultipleYears(int count) {
+    return '这个地方在你的相册里出现了 $count 个年份。';
+  }
+
+  @override
+  String get detailAiPlaceholder => '正在整理这段记忆……';
+
+  @override
+  String get dateClusterTitle => '这几天留下了很多照片。';
+
+  @override
+  String get samePlaceTitle => '这里有一段值得回看的记忆。';
+
+  @override
+  String yearRecapTitle(int year) {
+    return '$year 年，有很多值得回看的片段。';
+  }
+
+  @override
+  String get longTermEvolutionTitle => '这些照片记录了一段时间的变化。';
+
+  @override
+  String get annualTogetherTitle => '每年差不多这个时候，都有一组相似的记录。';
+
+  @override
+  String get samePlaceAcrossYearsTitle => '你已经连续几年来到这里。';
 }

@@ -7,6 +7,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:media_library/media_library.dart';
 import 'package:memory_app/l10n/app_localizations.dart';
+import 'package:memory_app/presentation/memory_candidate_copy_mapper.dart';
 import 'package:memory_domain/memory_domain.dart';
 import 'package:memory_engine/memory_engine.dart';
 import 'package:path_provider/path_provider.dart';
@@ -258,7 +259,13 @@ class _MemoryHomePageState extends State<MemoryHomePage> {
         throw result.failure!;
       }
       stats = await persistent.stats();
-      return persistent.allAssets(limit: 50000);
+      // P0-6: never silently truncate library. Paginate for completeness.
+      final count = stats?.total ?? 0;
+      if (count > 50000) {
+        // Explicit warning, not silent cap — still return full dataset paged.
+        debugPrint('Warning: library exceeds 50K ($count), paging full set.');
+      }
+      return persistent.allAssetsPaged();
     }
 
     final index = MediaIndex();
@@ -296,9 +303,8 @@ class _MemoryHomePageState extends State<MemoryHomePage> {
     MemoryCandidate candidate,
     List<String> labels,
   ) async {
-    final evaluation = MemoryEvaluation(
-      candidateId: candidate.id,
-      ruleType: candidate.type,
+    final evaluation = MemoryEvaluation.forCandidate(
+      candidate,
       accuracy: labels.contains('不准确') ? 2 : 4,
       meaningfulness: labels.contains('有意义') ? 5 : 3,
       surprise: labels.contains('有惊喜') ? 5 : 3,
@@ -614,14 +620,15 @@ class _MemoryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
+    final copy = const MemoryCandidateCopyMapper().map(candidate, l10n);
     return LifeStoryCard(
       hero: _Thumbnail(
         repository: repository,
         assetId: thumbnailAssetId,
         size: 720,
       ),
-      title: _title(candidate),
-      metadata: _metadata(candidate),
+      title: copy.title,
+      metadata: copy.subtitle,
       cta: _isYearBased(candidate) ? l10n.cardCtaYears : l10n.cardCtaMemory,
       onTap: onTap,
     );
@@ -632,24 +639,6 @@ class _MemoryCard extends StatelessWidget {
       c.type == MemoryCandidateType.personTimeline ||
       c.type == MemoryCandidateType.longTermEvolution ||
       c.type == MemoryCandidateType.annualTogether;
-
-  String _title(MemoryCandidate c) =>
-      c.safeTitleTemplate ??
-      switch (c.type) {
-        MemoryCandidateType.dateCluster => '这几天留下了很多照片。',
-        MemoryCandidateType.samePlace => '这里有一段值得回看的记忆。',
-        MemoryCandidateType.yearRecap => '${c.period.start.year} 年，有很多值得回看的片段。',
-        MemoryCandidateType.personTimeline => '这个人已经出现在你的镜头里很多年。',
-        MemoryCandidateType.samePlaceAcrossYears => '你已经连续几年来到这里。',
-        MemoryCandidateType.firstMemory => '这是相册里很早的一组记录。',
-        MemoryCandidateType.travelStory => '这段时间，看起来像一段完整的旅程。',
-        MemoryCandidateType.annualTogether => '每年差不多这个时候，都有一组相似的记录。',
-        MemoryCandidateType.longTermEvolution => '这些照片记录了一段时间的变化。',
-      };
-
-  String _metadata(MemoryCandidate c) =>
-      c.safeSubtitleTemplate ??
-      '${_yearRange(c)} · ${c.mediaIds.length} 张照片和视频';
 }
 
 class _Detail extends StatelessWidget {
@@ -705,7 +694,7 @@ class _Detail extends StatelessWidget {
             ),
           const SizedBox(height: AppSpacing.large),
           Text(
-            candidate.safeTitleTemplate ?? l10n.detailTitle,
+            const MemoryCandidateCopyMapper().map(candidate, l10n).title,
             style: Theme.of(context).textTheme.displaySmall,
           ),
           const SizedBox(height: AppSpacing.small),
@@ -742,7 +731,7 @@ class _Detail extends StatelessWidget {
           FutureBuilder<String>(
             future: ai.generateMemorySummary(memoryId: candidate.id),
             builder: (context, snapshot) => Text(
-              snapshot.data ?? '正在整理这段记忆……',
+              snapshot.data ?? l10n.detailAiPlaceholder,
               style: Theme.of(context).textTheme.bodyLarge,
             ),
           ),
@@ -1130,12 +1119,6 @@ const _allRuleNames = [
   'AnnualTogetherRule',
   'LongTermEvolutionRule',
 ];
-
-String _yearRange(MemoryCandidate c) {
-  final start = c.period.start.year;
-  final end = c.period.end.year;
-  return start == end ? '$start' : '$start — $end';
-}
 
 String _dateRange(MemoryCandidate c) {
   final start = c.period.start;

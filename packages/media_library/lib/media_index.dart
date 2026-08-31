@@ -162,8 +162,11 @@ class PersistentMediaIndex {
 
   Future<void> close() => _database.close();
 
-  Future<List<MediaAsset>> allAssets({int limit = 500, int offset = 0}) async {
+  Future<List<MediaAsset>> allAssets({int? limit = 500, int offset = 0}) async {
     await initialize();
+    if (limit == null) {
+      return allAssetsPaged();
+    }
     final rows = await _database
         .customSelect(
           'SELECT * FROM media_assets ORDER BY creation_date_ms ASC LIMIT ? OFFSET ?',
@@ -171,6 +174,27 @@ class PersistentMediaIndex {
         )
         .get();
     return rows.map(_assetFromRow).toList(growable: false);
+  }
+
+  /// P0-6: fetch all assets without silent truncation. Paginated to avoid
+  /// unbounded single-query memory pressure, but returns complete dataset.
+  Future<List<MediaAsset>> allAssetsPaged({int batchSize = 5000}) async {
+    await initialize();
+    final result = <MediaAsset>[];
+    var offset = 0;
+    while (true) {
+      final rows = await _database
+          .customSelect(
+            'SELECT * FROM media_assets ORDER BY creation_date_ms ASC LIMIT ? OFFSET ?',
+            variables: [Variable.withInt(batchSize), Variable.withInt(offset)],
+          )
+          .get();
+      if (rows.isEmpty) break;
+      result.addAll(rows.map(_assetFromRow));
+      if (rows.length < batchSize) break;
+      offset += batchSize;
+    }
+    return result;
   }
 
   Future<List<MediaAsset>> byDateRange(
