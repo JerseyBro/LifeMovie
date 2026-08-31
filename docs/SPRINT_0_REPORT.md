@@ -38,3 +38,5 @@
 ## Follow-up
 
 Sprint 0.5 addresses the first three technical next steps with real PhotoKit metadata fetches, thumbnail requests, Drift/SQLite persistence, reconciliation and synthetic vertical-slice/performance tests. The original Sprint 0 report is kept as the historical V0 baseline; see `docs/SPRINT_0_5_REPORT.md` for current acceptance status.
+
+Sprint 0.8 adds memory intelligence rules, ranking V0.2, safety/dedup/diversity, local human evaluation, Simplified Chinese localization and Product UI V0.1. See `docs/SPRINT_0_8_REPORT.md`.

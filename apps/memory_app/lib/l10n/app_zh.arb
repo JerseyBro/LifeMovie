@@ -1,0 +1,63 @@
+{
+  "@@locale": "zh",
+  "appTitle": "LifeMovie",
+  "onboardingTitle": "发现相册里那些你已经忘记的故事",
+  "onboardingSubtitle": "你的照片留在设备里。我们先在本地整理时间、地点和记忆线索。",
+  "onboardingCta": "开始看看",
+  "onboardingRetry": "再试一次",
+  "permissionUnavailable": "当前无法访问照片。你可以在系统设置里重新授权。",
+  "limitedPermissionHint": "你可以只选择一部分照片开始体验，以后也可以随时增加。",
+  "manageLimitedPhotos": "管理已选择的照片",
+  "indexingTitle": "正在整理你的照片",
+  "indexingCount": "已整理 {count} 张照片和视频",
+  "@indexingCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "feedDateToday": "今天",
+  "feedIntro": "今天，我发现了几段故事。",
+  "feedSummary": "已整理 {total} 个项目 · {photos} 张照片 · {videos} 段视频",
+  "@feedSummary": {
+    "placeholders": {
+      "total": {
+        "type": "int"
+      },
+      "photos": {
+        "type": "int"
+      },
+      "videos": {
+        "type": "int"
+      }
+    }
+  },
+  "privacySummary": "原始照片留在这台设备上。",
+  "emptyFeedTitle": "还没有发现足够稳定的记忆",
+  "emptyFeedSubtitle": "你可以刷新，或在照片权限里增加更多可访问照片。",
+  "cardCtaYears": "看看这些年",
+  "cardCtaMemory": "看看这段记忆",
+  "detailTitle": "这段记忆",
+  "detailTimeline": "时间线",
+  "detailPhotos": "{count} 张照片",
+  "@detailPhotos": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "detailVideos": "{count} 段视频",
+  "@detailVideos": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "detailLocationHint": "包含地点线索",
+  "personTimelineTitle": "这些年",
+  "memoryLab": "Memory Lab",
+  "debugOpenLab": "打开 Memory Lab"
+}

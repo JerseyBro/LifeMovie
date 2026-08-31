@@ -4,7 +4,7 @@
 |---|---|---|
 | `memory_domain` | Models and value objects | Flutter/platform APIs |
 | `media_library` | Media repository, permissions, normalized index | Discovery/ranking |
-| `memory_engine` | Rules, candidate discovery, score breakdown | UI, PhotoKit, provider calls |
+| `memory_engine` | Rules, candidate discovery, score breakdown, ranking, dedup, diversity, sensitivity guard, local evaluation contracts | UI, PhotoKit, provider calls |
 | `ai_gateway` | AI interface and providers | Media permissions or widgets |
 | `media_processing` | Movie renderer boundary | Product editor |
 | `analytics` | Event interface/providers | Business decisions |
@@ -33,6 +33,28 @@ apps/memory_app
 ```
 
 `memory_engine` no longer depends on `media_library`; both depend on `memory_domain`. `design_system` has no business dependency. iOS PhotoKit and SQLite platform details are isolated behind `media_library` and the app composition root.
+
+Sprint 0.8 keeps the same dependency direction:
+
+```text
+memory_domain
+  <- media_library
+  <- memory_engine
+
+design_system
+analytics
+ai_gateway
+
+apps/memory_app
+  -> memory_domain
+  -> media_library
+  -> memory_engine
+  -> design_system
+  -> analytics
+  -> ai_gateway
+```
+
+`personIds` currently remain a derived annotation on `MediaAsset` for injected/mock product validation. They are not native PhotoKit metadata and not a confirmed identity graph. A later Person Intelligence sprint can move this into a separate `media_person_links` style relation if real identity modeling is introduced.
 
 ## Public API surface
 

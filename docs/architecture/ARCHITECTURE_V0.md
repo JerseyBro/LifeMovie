@@ -28,3 +28,28 @@ iPhone Photos
 ```
 
 Reconciliation compares current accessible PhotoKit assets with the local index and applies insert/update/delete operations. This supports Limited Library add/remove flows without assuming that photo access is stable forever. Real-time `PHPhotoLibraryChangeObserver` remains a future enhancement; reconciliation is the Sprint 0.5 recovery mechanism.
+
+## Sprint 0.8 memory intelligence path
+
+```text
+PersistentMediaIndex metadata
+  -> MemoryContext
+  -> MemoryRule plugins
+       DateClusterRule
+       SamePlaceRule
+       YearRecapRule
+       SamePlaceAcrossYearsRule
+       FirstMemoryRule
+       TravelStoryRule
+       PersonTimelineRule
+       AnnualTogetherRule
+       LongTermEvolutionRule
+  -> WeightedMemoryRanker V0.2
+  -> MemorySensitivityGuard
+  -> MemoryCandidateDeduplicator
+  -> FeedDiversityController
+  -> Chinese Discovery Feed / Detail
+  -> Debug-only Memory Lab V0.2
+```
+
+Rules remain deterministic metadata heuristics. The system does not infer relationships, illness, death, pregnancy, marriage, body change or other sensitive facts. Product text uses safe templates such as “这个人” and “这些年” unless the user explicitly labels relationships in a future sprint.

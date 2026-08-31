@@ -1,7 +1,5 @@
 library;
 
-import 'dart:typed_data';
-
 import 'package:flutter/services.dart';
 import 'package:memory_domain/memory_domain.dart';
 

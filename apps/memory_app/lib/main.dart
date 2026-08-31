@@ -6,8 +6,10 @@ import 'package:design_system/design_system.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:media_library/media_library.dart';
+import 'package:memory_app/l10n/app_localizations.dart';
 import 'package:memory_domain/memory_domain.dart';
 import 'package:memory_engine/memory_engine.dart';
+import 'package:path_provider/path_provider.dart';
 
 void main() => runApp(const MemoryApp());
 
@@ -16,53 +18,105 @@ class MemoryApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => MaterialApp(
-    title: 'Memory',
+    title: 'LifeMovie',
     theme: buildNeutralTheme(),
+    locale: const Locale('zh'),
+    localizationsDelegates: AppLocalizations.localizationsDelegates,
+    supportedLocales: AppLocalizations.supportedLocales,
     home: const MemoryHomePage(),
   );
 }
 
 class MemoryHomePage extends StatefulWidget {
-  const MemoryHomePage({super.key});
+  const MemoryHomePage({
+    super.key,
+    this.repository,
+    this.persistentIndex,
+    this.analytics,
+    this.ai,
+  });
+
+  final MediaRepository? repository;
+  final PersistentMediaIndex? persistentIndex;
+  final Analytics? analytics;
+  final AiService? ai;
 
   @override
   State<MemoryHomePage> createState() => _MemoryHomePageState();
 }
 
 class _MemoryHomePageState extends State<MemoryHomePage> {
-  late final MediaRepository repository = Platform.isIOS
-      ? PhotoKitMediaRepository()
-      : MockMediaRepository();
-  late final PersistentMediaIndex? persistentIndex = Platform.isIOS
-      ? PersistentMediaIndex.appDatabase()
-      : null;
-  final Analytics analytics = const DebugAnalytics();
-  final AiService ai = const MockAiProvider();
-  late final MemoryEngine engine = MemoryEngine(
-    rules: const [
-      DateClusterRule(),
-      SamePlaceRule(),
-      YearRecapRule(),
-      PersonTimelineRule(),
-    ],
-  );
-  final MemoryRanker ranker = const WeightedMemoryRanker();
+  late final MediaRepository repository =
+      widget.repository ??
+      (Platform.isIOS ? PhotoKitMediaRepository() : MockMediaRepository());
+  late final PersistentMediaIndex? persistentIndex =
+      widget.persistentIndex ??
+      (Platform.isIOS ? PersistentMediaIndex.appDatabase() : null);
+  late final Analytics analytics = widget.analytics ?? const DebugAnalytics();
+  late final AiService ai = widget.ai ?? const MockAiProvider();
+
   final ScanCancellationToken cancellationToken = ScanCancellationToken();
+  final MemoryCandidateDeduplicator deduplicator =
+      const MemoryCandidateDeduplicator();
+  final FeedDiversityController diversity = const FeedDiversityController();
+  final MemorySensitivityGuard sensitivityGuard =
+      const MemorySensitivityGuard();
+
+  MemoryEvaluationStore evaluationStore = InMemoryMemoryEvaluationStore();
+  MemoryIntelligenceConfig intelligenceConfig =
+      const MemoryIntelligenceConfig();
+  Set<String> enabledRules = {
+    'DateClusterRule',
+    'SamePlaceRule',
+    'YearRecapRule',
+    'SamePlaceAcrossYearsRule',
+    'FirstMemoryRule',
+    'TravelStoryRule',
+    'PersonTimelineRule',
+    'AnnualTogetherRule',
+    'LongTermEvolutionRule',
+  };
 
   MediaPermissionStatus permission = MediaPermissionStatus.notDetermined;
   List<MediaAsset> indexedAssets = const [];
-  List<MemoryCandidate> candidates = const [];
+  List<MemoryCandidate> rawCandidates = const [];
+  List<MemoryCandidate> rankedCandidates = const [];
+  List<MemoryCandidate> feedCandidates = const [];
   MediaIndexStats? stats;
+  IndexProgress? progress;
   bool onboardingComplete = false;
   bool scanning = false;
   String? selectedId;
   String? failureMessage;
+
+  MemoryRanker get ranker => WeightedMemoryRanker(
+    weights: intelligenceConfig.rankingWeights,
+    sensitivityGuard: sensitivityGuard,
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    _prepareEvaluationStore();
+  }
 
   @override
   void dispose() {
     cancellationToken.cancel();
     persistentIndex?.close();
     super.dispose();
+  }
+
+  Future<void> _prepareEvaluationStore() async {
+    if (kIsWeb) return;
+    try {
+      final dir = await getApplicationSupportDirectory();
+      evaluationStore = JsonFileMemoryEvaluationStore(
+        File('${dir.path}/memory_evaluations.json'),
+      );
+    } on Object {
+      evaluationStore = InMemoryMemoryEvaluationStore();
+    }
   }
 
   Future<void> _start() async {
@@ -82,22 +136,32 @@ class _MemoryHomePageState extends State<MemoryHomePage> {
     setState(() {
       scanning = true;
       failureMessage = null;
+      progress = null;
     });
     analytics.track('media_index_started');
     try {
       final assets = await _indexAssets();
       final memoryContext = MemoryContext(assets: assets);
-      final discovered = await engine.discover(memoryContext);
+      final discovered = await _discover(memoryContext);
       final ranked = ranker.rank(discovered, memoryContext);
+      final deduped = deduplicator.deduplicate(ranked);
+      final feed = diversity.diversify(deduped, limit: 20);
+
       analytics.track('media_index_completed', {'count': assets.length});
-      analytics.track('memory_discovered', {'count': ranked.length});
-      for (final candidate in ranked.take(3)) {
-        analytics.track('memory_impression', {'id': candidate.id});
+      analytics.track('memory_candidate_ranked', {'count': ranked.length});
+      for (var i = 0; i < feed.take(10).length; i += 1) {
+        analytics.track('memory_candidate_impression', {
+          'rule': feed[i].type.name,
+          'rank': i + 1,
+          'scoreBucket': (feed[i].score ~/ 10) * 10,
+        });
       }
       if (mounted) {
         setState(() {
           indexedAssets = assets;
-          candidates = ranked;
+          rawCandidates = discovered;
+          rankedCandidates = ranked;
+          feedCandidates = feed;
           scanning = false;
         });
       }
@@ -120,12 +184,72 @@ class _MemoryHomePageState extends State<MemoryHomePage> {
     }
   }
 
+  Future<List<MemoryCandidate>> _discover(MemoryContext memoryContext) async {
+    final all = <MemoryCandidate>[];
+    for (final rule in _activeRules()) {
+      final stopwatch = Stopwatch()..start();
+      final candidates = await rule.discover(memoryContext);
+      stopwatch.stop();
+      analytics.track('memory_rule_executed', {
+        'rule': rule.runtimeType.toString(),
+        'durationMs': stopwatch.elapsedMilliseconds,
+      });
+      for (final candidate in candidates) {
+        analytics.track('memory_candidate_generated', {
+          'rule': candidate.type.name,
+        });
+        final sensitivity = sensitivityGuard.assess(candidate);
+        if (sensitivity.flags.isNotEmpty) {
+          analytics.track('memory_candidate_sensitive', {
+            'rule': candidate.type.name,
+            'flagCount': sensitivity.flags.length,
+          });
+        }
+      }
+      all.addAll(candidates);
+    }
+    return all;
+  }
+
+  List<MemoryRule> _activeRules() {
+    final rules = <String, MemoryRule>{
+      'DateClusterRule': const DateClusterRule(),
+      'SamePlaceRule': const SamePlaceRule(),
+      'YearRecapRule': const YearRecapRule(),
+      'SamePlaceAcrossYearsRule': SamePlaceAcrossYearsRule(
+        config: intelligenceConfig.samePlaceAcrossYears,
+      ),
+      'FirstMemoryRule': FirstMemoryRule(
+        config: intelligenceConfig.firstMemory,
+      ),
+      'TravelStoryRule': TravelStoryRule(
+        config: intelligenceConfig.travelStory,
+      ),
+      'PersonTimelineRule': PersonTimelineRule(
+        config: intelligenceConfig.personTimeline,
+      ),
+      'AnnualTogetherRule': AnnualTogetherRule(
+        config: intelligenceConfig.annualTogether,
+      ),
+      'LongTermEvolutionRule': LongTermEvolutionRule(
+        config: intelligenceConfig.longTermEvolution,
+      ),
+    };
+    return rules.entries
+        .where((entry) => enabledRules.contains(entry.key))
+        .map((entry) => entry.value)
+        .toList(growable: false);
+  }
+
   Future<List<MediaAsset>> _indexAssets() async {
     final persistent = persistentIndex;
     if (persistent != null) {
       final result = await persistent.reconcile(
         repository,
         cancellationToken: cancellationToken,
+        onProgress: (value) {
+          if (mounted) setState(() => progress = value);
+        },
       );
       if (result.cancelled) {
         analytics.track('media_index_cancelled');
@@ -134,11 +258,17 @@ class _MemoryHomePageState extends State<MemoryHomePage> {
         throw result.failure!;
       }
       stats = await persistent.stats();
-      return persistent.allAssets(limit: 2000);
+      return persistent.allAssets(limit: 50000);
     }
 
     final index = MediaIndex();
-    await index.reconcile(repository, cancellationToken: cancellationToken);
+    await index.reconcile(
+      repository,
+      cancellationToken: cancellationToken,
+      onProgress: (value) {
+        if (mounted) setState(() => progress = value);
+      },
+    );
     stats = MediaIndexStats(
       total: index.assets.length,
       photos: index.assets
@@ -162,6 +292,28 @@ class _MemoryHomePageState extends State<MemoryHomePage> {
     await _scan();
   }
 
+  Future<void> _saveEvaluation(
+    MemoryCandidate candidate,
+    List<String> labels,
+  ) async {
+    final evaluation = MemoryEvaluation(
+      candidateId: candidate.id,
+      ruleType: candidate.type,
+      accuracy: labels.contains('不准确') ? 2 : 4,
+      meaningfulness: labels.contains('有意义') ? 5 : 3,
+      surprise: labels.contains('有惊喜') ? 5 : 3,
+      clarity: labels.contains('表达不舒服') ? 2 : 4,
+      sensitivity: labels.contains('不希望看到') || labels.contains('太私人') ? 2 : 5,
+      labels: labels,
+      createdAt: DateTime.now(),
+    );
+    await evaluationStore.save(evaluation);
+    analytics.track('memory_candidate_feedback', {
+      'rule': candidate.type.name,
+      'feedbackType': labels.join('|'),
+    });
+  }
+
   void _trackPermission(MediaPermissionStatus status) {
     switch (status) {
       case MediaPermissionStatus.authorized:
@@ -179,18 +331,26 @@ class _MemoryHomePageState extends State<MemoryHomePage> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     if (!onboardingComplete) {
       return _Onboarding(permission: permission, onStart: _start);
     }
     if (scanning) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return _IndexingPage(progress: progress);
     }
     if (selectedId != null) {
-      final candidate = candidates.firstWhere((c) => c.id == selectedId);
+      final candidate = feedCandidates.firstWhere((c) => c.id == selectedId);
       final assetsById = {for (final asset in indexedAssets) asset.id: asset};
+      final mediaIds = candidate.representativeMediaIds.isEmpty
+          ? candidate.mediaIds
+          : candidate.representativeMediaIds;
       return _Detail(
         candidate: candidate,
-        assets: candidate.mediaIds
+        allAssets: candidate.mediaIds
+            .map((id) => assetsById[id])
+            .whereType<MediaAsset>()
+            .toList(growable: false),
+        representativeAssets: mediaIds
             .map((id) => assetsById[id])
             .whereType<MediaAsset>()
             .toList(growable: false),
@@ -203,24 +363,35 @@ class _MemoryHomePageState extends State<MemoryHomePage> {
     }
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Memory discovery'),
+        title: Text(l10n.appTitle),
         actions: [
           if (permission == MediaPermissionStatus.limited)
             IconButton(
-              tooltip: 'Manage limited photos',
+              tooltip: l10n.manageLimitedPhotos,
               onPressed: _manageLimitedLibrary,
               icon: const Icon(Icons.photo_library_outlined),
             ),
           if (kDebugMode)
             IconButton(
-              tooltip: 'Memory Lab',
+              tooltip: l10n.debugOpenLab,
               onPressed: () => Navigator.of(context).push(
                 MaterialPageRoute(
                   builder: (_) => _MemoryLab(
                     stats: stats,
-                    candidates: candidates,
-                    context: MemoryContext(assets: indexedAssets),
+                    rawCandidates: rawCandidates,
+                    rankedCandidates: rankedCandidates,
+                    feedCandidates: feedCandidates,
+                    memoryContext: MemoryContext(assets: indexedAssets),
                     ranker: ranker,
+                    sensitivityGuard: sensitivityGuard,
+                    enabledRules: enabledRules,
+                    config: intelligenceConfig,
+                    onRulesChanged: (value) =>
+                        setState(() => enabledRules = value),
+                    onConfigChanged: (value) =>
+                        setState(() => intelligenceConfig = value),
+                    onRescan: _scan,
+                    onSaveEvaluation: _saveEvaluation,
                   ),
                 ),
               ),
@@ -231,42 +402,66 @@ class _MemoryHomePageState extends State<MemoryHomePage> {
       body: RefreshIndicator(
         onRefresh: _scan,
         child: ListView(
-          padding: const EdgeInsets.all(AppSpacing.medium),
+          padding: const EdgeInsets.all(AppSpacing.large),
           children: [
             Text(
-              'Stories waiting to be noticed',
-              style: Theme.of(context).textTheme.headlineSmall,
+              l10n.feedDateToday,
+              style: Theme.of(context).textTheme.bodyMedium,
             ),
             const SizedBox(height: AppSpacing.small),
-            Text(_summaryText),
+            Text(
+              l10n.feedIntro,
+              style: Theme.of(context).textTheme.displaySmall,
+            ),
+            const SizedBox(height: AppSpacing.medium),
+            Text(
+              _summaryText(l10n),
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
             if (failureMessage != null) ...[
               const SizedBox(height: AppSpacing.medium),
               Text(failureMessage!, style: const TextStyle(color: Colors.red)),
             ],
             const SizedBox(height: AppSpacing.large),
-            ...candidates
-                .take(10)
-                .map(
-                  (candidate) => _MemoryCard(
-                    candidate: candidate,
-                    repository: repository,
-                    thumbnailAssetId: candidate.mediaIds.firstOrNull,
-                    onTap: () {
-                      analytics.track('memory_opened', {'id': candidate.id});
-                      setState(() => selectedId = candidate.id);
-                    },
+            if (feedCandidates.isEmpty)
+              _EmptyFeed(onRefresh: _scan)
+            else
+              ...feedCandidates
+                  .take(10)
+                  .map(
+                    (candidate) => Padding(
+                      padding: const EdgeInsets.only(bottom: AppSpacing.large),
+                      child: _MemoryCard(
+                        candidate: candidate,
+                        repository: repository,
+                        thumbnailAssetId: _thumbnailId(candidate),
+                        onTap: () {
+                          analytics.track('memory_candidate_opened', {
+                            'rule': candidate.type.name,
+                            'scoreBucket': (candidate.score ~/ 10) * 10,
+                          });
+                          analytics.track('memory_opened', {
+                            'rule': candidate.type.name,
+                          });
+                          setState(() => selectedId = candidate.id);
+                        },
+                      ),
+                    ),
                   ),
-                ),
           ],
         ),
       ),
     );
   }
 
-  String get _summaryText {
+  String? _thumbnailId(MemoryCandidate candidate) =>
+      candidate.representativeMediaIds.firstOrNull ??
+      candidate.mediaIds.firstOrNull;
+
+  String _summaryText(AppLocalizations l10n) {
     final s = stats;
-    if (s == null) return 'Your originals stay on this device.';
-    return '${s.total} indexed assets · ${s.photos} photos · ${s.videos} videos';
+    if (s == null) return l10n.privacySummary;
+    return l10n.feedSummary(s.total, s.photos, s.videos);
   }
 }
 
@@ -277,46 +472,130 @@ class _Onboarding extends StatelessWidget {
   final VoidCallback onStart;
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    body: SafeArea(
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final denied =
+        permission == MediaPermissionStatus.denied ||
+        permission == MediaPermissionStatus.restricted;
+    return Scaffold(
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.large),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Spacer(),
+              const Icon(
+                Icons.photo_outlined,
+                size: 42,
+                color: AppColor.accent,
+              ),
+              const SizedBox(height: AppSpacing.large),
+              Text(
+                l10n.onboardingTitle,
+                style: Theme.of(context).textTheme.displaySmall,
+              ),
+              const SizedBox(height: AppSpacing.medium),
+              Text(
+                l10n.onboardingSubtitle,
+                style: Theme.of(context).textTheme.bodyLarge,
+              ),
+              const SizedBox(height: AppSpacing.medium),
+              Text(
+                l10n.limitedPermissionHint,
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+              const Spacer(),
+              if (denied) ...[
+                Text(l10n.permissionUnavailable),
+                const SizedBox(height: AppSpacing.medium),
+              ],
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  onPressed: onStart,
+                  child: Text(
+                    permission == MediaPermissionStatus.notDetermined
+                        ? l10n.onboardingCta
+                        : l10n.onboardingRetry,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _IndexingPage extends StatelessWidget {
+  const _IndexingPage({required this.progress});
+
+  final IndexProgress? progress;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final count = progress?.indexed ?? progress?.scanned ?? 0;
+    return Scaffold(
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.large),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Spacer(),
+              Text(
+                l10n.indexingTitle,
+                style: Theme.of(context).textTheme.displaySmall,
+              ),
+              const SizedBox(height: AppSpacing.medium),
+              Text(
+                l10n.indexingCount(count),
+                style: Theme.of(context).textTheme.bodyLarge,
+              ),
+              const SizedBox(height: AppSpacing.large),
+              const LinearProgressIndicator(),
+              const Spacer(),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _EmptyFeed extends StatelessWidget {
+  const _EmptyFeed({required this.onRefresh});
+
+  final VoidCallback onRefresh;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    return Card(
       child: Padding(
         padding: const EdgeInsets.all(AppSpacing.large),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Spacer(),
-            const Icon(Icons.auto_awesome, size: 48),
-            const SizedBox(height: AppSpacing.large),
             Text(
-              'Rediscover the stories already in your photos.',
-              style: Theme.of(context).textTheme.headlineMedium,
+              l10n.emptyFeedTitle,
+              style: Theme.of(context).textTheme.titleLarge,
             ),
+            const SizedBox(height: AppSpacing.small),
+            Text(l10n.emptyFeedSubtitle),
             const SizedBox(height: AppSpacing.medium),
-            const Text(
-              'We use photo metadata on your device to find meaningful moments. Original photos stay on your device.',
-            ),
-            const Spacer(),
-            if (permission == MediaPermissionStatus.denied ||
-                permission == MediaPermissionStatus.restricted)
-              const Text(
-                'Photo access is unavailable. You can review it in Settings.',
-              ),
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton(
-                onPressed: onStart,
-                child: Text(
-                  permission == MediaPermissionStatus.notDetermined
-                      ? 'Choose photos'
-                      : 'Try again',
-                ),
-              ),
+            FilledButton(
+              onPressed: onRefresh,
+              child: Text(l10n.onboardingRetry),
             ),
           ],
         ),
       ),
-    ),
-  );
+    );
+  }
 }
 
 class _MemoryCard extends StatelessWidget {
@@ -333,53 +612,51 @@ class _MemoryCard extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) => Card(
-    margin: const EdgeInsets.only(bottom: AppSpacing.medium),
-    child: InkWell(
-      borderRadius: BorderRadius.circular(AppRadius.card),
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.medium),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _Thumbnail(
-              repository: repository,
-              assetId: thumbnailAssetId,
-              size: 420,
-            ),
-            const SizedBox(height: AppSpacing.medium),
-            Text(
-              _title(candidate),
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            const SizedBox(height: 4),
-            Text(
-              '${candidate.period.start.year} · ${candidate.mediaIds.length} assets',
-            ),
-            const SizedBox(height: 8),
-            Text(
-              candidate.reasons.firstOrNull ??
-                  'A memory candidate from your library',
-            ),
-          ],
-        ),
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    return LifeStoryCard(
+      hero: _Thumbnail(
+        repository: repository,
+        assetId: thumbnailAssetId,
+        size: 720,
       ),
-    ),
-  );
+      title: _title(candidate),
+      metadata: _metadata(candidate),
+      cta: _isYearBased(candidate) ? l10n.cardCtaYears : l10n.cardCtaMemory,
+      onTap: onTap,
+    );
+  }
 
-  String _title(MemoryCandidate c) => switch (c.type) {
-    MemoryCandidateType.dateCluster => 'A dense stretch of days',
-    MemoryCandidateType.samePlace => 'A visit worth remembering',
-    MemoryCandidateType.yearRecap => '${c.period.start.year} in review',
-    MemoryCandidateType.personTimeline => 'A person story seed',
-  };
+  bool _isYearBased(MemoryCandidate c) =>
+      c.type == MemoryCandidateType.samePlaceAcrossYears ||
+      c.type == MemoryCandidateType.personTimeline ||
+      c.type == MemoryCandidateType.longTermEvolution ||
+      c.type == MemoryCandidateType.annualTogether;
+
+  String _title(MemoryCandidate c) =>
+      c.safeTitleTemplate ??
+      switch (c.type) {
+        MemoryCandidateType.dateCluster => '这几天留下了很多照片。',
+        MemoryCandidateType.samePlace => '这里有一段值得回看的记忆。',
+        MemoryCandidateType.yearRecap => '${c.period.start.year} 年，有很多值得回看的片段。',
+        MemoryCandidateType.personTimeline => '这个人已经出现在你的镜头里很多年。',
+        MemoryCandidateType.samePlaceAcrossYears => '你已经连续几年来到这里。',
+        MemoryCandidateType.firstMemory => '这是相册里很早的一组记录。',
+        MemoryCandidateType.travelStory => '这段时间，看起来像一段完整的旅程。',
+        MemoryCandidateType.annualTogether => '每年差不多这个时候，都有一组相似的记录。',
+        MemoryCandidateType.longTermEvolution => '这些照片记录了一段时间的变化。',
+      };
+
+  String _metadata(MemoryCandidate c) =>
+      c.safeSubtitleTemplate ??
+      '${_yearRange(c)} · ${c.mediaIds.length} 张照片和视频';
 }
 
 class _Detail extends StatelessWidget {
   const _Detail({
     required this.candidate,
-    required this.assets,
+    required this.allAssets,
+    required this.representativeAssets,
     required this.onBack,
     required this.ai,
     required this.repository,
@@ -388,7 +665,8 @@ class _Detail extends StatelessWidget {
   });
 
   final MemoryCandidate candidate;
-  final List<MediaAsset> assets;
+  final List<MediaAsset> allAssets;
+  final List<MediaAsset> representativeAssets;
   final VoidCallback onBack;
   final AiService ai;
   final MediaRepository repository;
@@ -397,61 +675,92 @@ class _Detail extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final photos = assets
+    final l10n = AppLocalizations.of(context)!;
+    final photos = allAssets
         .where(
           (a) => a.type == MediaType.image || a.type == MediaType.livePhoto,
         )
         .length;
-    final videos = assets.where((a) => a.type == MediaType.video).length;
-    final hasLocation = assets.any((a) => a.location != null);
+    final videos = allAssets.where((a) => a.type == MediaType.video).length;
+    final hasLocation = allAssets.any((a) => a.location != null);
     final breakdown = ranker.explain(
       candidate,
       MemoryContext(assets: contextAssets),
     );
+    final byYear = _assetsByYear(allAssets);
 
     return Scaffold(
       appBar: AppBar(
         leading: BackButton(onPressed: onBack),
-        title: const Text('Memory detail'),
+        title: Text(l10n.detailTitle),
       ),
       body: ListView(
-        padding: const EdgeInsets.all(AppSpacing.medium),
+        padding: const EdgeInsets.all(AppSpacing.large),
         children: [
-          Text(_dateRange, style: Theme.of(context).textTheme.titleLarge),
+          if (representativeAssets.isNotEmpty)
+            _Thumbnail(
+              repository: repository,
+              assetId: representativeAssets.first.id,
+              size: 900,
+            ),
+          const SizedBox(height: AppSpacing.large),
+          Text(
+            candidate.safeTitleTemplate ?? l10n.detailTitle,
+            style: Theme.of(context).textTheme.displaySmall,
+          ),
           const SizedBox(height: AppSpacing.small),
-          Text('${assets.length} assets · $photos photos · $videos videos'),
-          if (hasLocation) const Text('Location metadata available'),
-          const SizedBox(height: AppSpacing.medium),
+          Text(
+            _dateRange(candidate),
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
+          const SizedBox(height: AppSpacing.small),
+          Text('${l10n.detailPhotos(photos)} · ${l10n.detailVideos(videos)}'),
+          if (hasLocation) Text(l10n.detailLocationHint),
+          const SizedBox(height: AppSpacing.large),
           _ThumbnailGrid(
             repository: repository,
-            assets: assets.take(12).toList(),
+            assets: representativeAssets.take(12).toList(),
+          ),
+          const SizedBox(height: AppSpacing.large),
+          Text(
+            l10n.detailTimeline,
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
+          ...byYear.entries.map(
+            (entry) => Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                TimelineYearLabel(year: entry.key),
+                _ThumbnailGrid(
+                  repository: repository,
+                  assets: entry.value.take(6).toList(),
+                ),
+              ],
+            ),
           ),
           const SizedBox(height: AppSpacing.large),
           FutureBuilder<String>(
             future: ai.generateMemorySummary(memoryId: candidate.id),
             builder: (context, snapshot) => Text(
-              snapshot.data ?? 'Preparing a summary...',
+              snapshot.data ?? '正在整理这段记忆……',
               style: Theme.of(context).textTheme.bodyLarge,
             ),
           ),
           if (kDebugMode) ...[
-            const Divider(height: AppSpacing.large),
+            const Divider(height: AppSpacing.xLarge),
             Text(
-              'Debug reasons',
+              'Debug: ${candidate.type.name}',
               style: Theme.of(context).textTheme.titleMedium,
             ),
             ...candidate.reasons.map(
-              (reason) => ListTile(
-                leading: const Icon(Icons.check_circle_outline),
-                title: Text(reason),
-              ),
+              (reason) => ListTile(dense: true, title: Text(reason)),
             ),
             Text('Score ${breakdown.finalScore.toStringAsFixed(1)}'),
             ...breakdown.factors.entries.map(
               (entry) => ListTile(
                 dense: true,
                 title: Text(entry.key),
-                trailing: Text('+${entry.value.toStringAsFixed(1)}'),
+                trailing: Text(entry.value.toStringAsFixed(1)),
               ),
             ),
           ],
@@ -459,9 +768,6 @@ class _Detail extends StatelessWidget {
       ),
     );
   }
-
-  String get _dateRange =>
-      '${candidate.period.start.toLocal()} - ${candidate.period.end.toLocal()}';
 }
 
 class _ThumbnailGrid extends StatelessWidget {
@@ -522,7 +828,7 @@ class _ThumbnailState extends State<_Thumbnail> {
 
   @override
   Widget build(BuildContext context) => ClipRRect(
-    borderRadius: BorderRadius.circular(AppRadius.card),
+    borderRadius: BorderRadius.circular(AppRadius.hero),
     child: AspectRatio(
       aspectRatio: 1,
       child: FutureBuilder<Uint8List?>(
@@ -531,8 +837,11 @@ class _ThumbnailState extends State<_Thumbnail> {
           final bytes = snapshot.data;
           if (bytes == null) {
             return ColoredBox(
-              color: AppColor.accent.withValues(alpha: .18),
-              child: const Icon(Icons.photo_library_outlined),
+              color: AppColor.accent.withValues(alpha: .14),
+              child: const Icon(
+                Icons.photo_library_outlined,
+                color: AppColor.accent,
+              ),
             );
           }
           return Image.memory(bytes, fit: BoxFit.cover, gaplessPlayback: true);
@@ -542,24 +851,51 @@ class _ThumbnailState extends State<_Thumbnail> {
   );
 }
 
-class _MemoryLab extends StatelessWidget {
+class _MemoryLab extends StatefulWidget {
   const _MemoryLab({
     required this.stats,
-    required this.candidates,
-    required this.context,
+    required this.rawCandidates,
+    required this.rankedCandidates,
+    required this.feedCandidates,
+    required this.memoryContext,
     required this.ranker,
+    required this.sensitivityGuard,
+    required this.enabledRules,
+    required this.config,
+    required this.onRulesChanged,
+    required this.onConfigChanged,
+    required this.onRescan,
+    required this.onSaveEvaluation,
   });
 
   final MediaIndexStats? stats;
-  final List<MemoryCandidate> candidates;
-  final MemoryContext context;
+  final List<MemoryCandidate> rawCandidates;
+  final List<MemoryCandidate> rankedCandidates;
+  final List<MemoryCandidate> feedCandidates;
+  final MemoryContext memoryContext;
   final MemoryRanker ranker;
+  final MemorySensitivityGuard sensitivityGuard;
+  final Set<String> enabledRules;
+  final MemoryIntelligenceConfig config;
+  final ValueChanged<Set<String>> onRulesChanged;
+  final ValueChanged<MemoryIntelligenceConfig> onConfigChanged;
+  final Future<void> Function() onRescan;
+  final Future<void> Function(MemoryCandidate candidate, List<String> labels)
+  onSaveEvaluation;
+
+  @override
+  State<_MemoryLab> createState() => _MemoryLabState();
+}
+
+class _MemoryLabState extends State<_MemoryLab> {
+  MemoryCandidate? compareA;
+  MemoryCandidate? compareB;
 
   @override
   Widget build(BuildContext context) {
-    final s = stats;
+    final s = widget.stats;
     return Scaffold(
-      appBar: AppBar(title: const Text('Memory Lab')),
+      appBar: AppBar(title: const Text('Memory Lab V0.2')),
       body: ListView(
         padding: const EdgeInsets.all(AppSpacing.medium),
         children: [
@@ -570,39 +906,251 @@ class _MemoryLab extends StatelessWidget {
                 : '${s.total} indexed · ${s.photos} photos · ${s.videos} videos · ${s.placeClusterCount} place clusters',
           ),
           const SizedBox(height: AppSpacing.medium),
-          const Text(
-            'Rules: DateClusterRule, SamePlaceRule, YearRecapRule, PersonTimelineRule',
-          ),
-          Text('Candidates: ${candidates.length}'),
+          Text('Rule ON / OFF', style: Theme.of(context).textTheme.titleLarge),
+          ..._allRuleNames.map(_ruleSwitch),
           const Divider(),
-          ...candidates.take(20).map((candidate) {
-            final breakdown = ranker.explain(candidate, this.context);
-            return Card(
-              child: Padding(
-                padding: const EdgeInsets.all(AppSpacing.medium),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      candidate.type.name,
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
-                    Text(
-                      '${candidate.mediaIds.length} assets · score ${breakdown.finalScore.toStringAsFixed(1)}',
-                    ),
-                    ...breakdown.factors.entries.map(
-                      (entry) => Text(
-                        '${entry.key}: +${entry.value.toStringAsFixed(1)}',
-                      ),
-                    ),
-                    ...candidate.reasons.map((reason) => Text(reason)),
-                  ],
-                ),
-              ),
-            );
-          }),
+          Text(
+            'Rule Parameters',
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
+          _samePlaceYearSlider(),
+          _travelAssetsSlider(),
+          FilledButton(
+            onPressed: widget.onRescan,
+            child: const Text('Re-run discovery'),
+          ),
+          const Divider(),
+          Text(
+            'Raw ${widget.rawCandidates.length} · Ranked ${widget.rankedCandidates.length} · Feed ${widget.feedCandidates.length}',
+          ),
+          const SizedBox(height: AppSpacing.small),
+          Text(
+            'Top 10 Candidate Browser',
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
+          ...widget.feedCandidates.take(10).map(_candidateCard),
+          const Divider(),
+          Text(
+            'Candidate Compare',
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
+          _comparePane(),
         ],
       ),
     );
   }
+
+  Widget _ruleSwitch(String name) => SwitchListTile(
+    title: Text(name),
+    value: widget.enabledRules.contains(name),
+    onChanged: (enabled) {
+      final next = {...widget.enabledRules};
+      enabled ? next.add(name) : next.remove(name);
+      widget.onRulesChanged(next);
+      setState(() {});
+    },
+  );
+
+  Widget _samePlaceYearSlider() {
+    final current = widget.config.samePlaceAcrossYears.minimumYearCount;
+    return ListTile(
+      title: Text('SamePlaceAcrossYears minimum years: $current'),
+      subtitle: Slider(
+        value: current.toDouble(),
+        min: 2,
+        max: 8,
+        divisions: 6,
+        onChanged: (value) {
+          widget.onConfigChanged(
+            MemoryIntelligenceConfig(
+              samePlaceAcrossYears: SamePlaceAcrossYearsRuleConfig(
+                minimumYearCount: value.round(),
+                minimumVisitCount:
+                    widget.config.samePlaceAcrossYears.minimumVisitCount,
+                locationPrecision:
+                    widget.config.samePlaceAcrossYears.locationPrecision,
+                sessionGap: widget.config.samePlaceAcrossYears.sessionGap,
+              ),
+              firstMemory: widget.config.firstMemory,
+              travelStory: widget.config.travelStory,
+              personTimeline: widget.config.personTimeline,
+              annualTogether: widget.config.annualTogether,
+              longTermEvolution: widget.config.longTermEvolution,
+              rankingWeights: widget.config.rankingWeights,
+            ),
+          );
+          setState(() {});
+        },
+      ),
+    );
+  }
+
+  Widget _travelAssetsSlider() {
+    final current = widget.config.travelStory.minimumAssets;
+    return ListTile(
+      title: Text('TravelStory minimum media count: $current'),
+      subtitle: Slider(
+        value: current.toDouble(),
+        min: 6,
+        max: 40,
+        divisions: 17,
+        onChanged: (value) {
+          widget.onConfigChanged(
+            MemoryIntelligenceConfig(
+              samePlaceAcrossYears: widget.config.samePlaceAcrossYears,
+              firstMemory: widget.config.firstMemory,
+              travelStory: TravelStoryRuleConfig(
+                minimumAssets: value.round(),
+                minimumDays: widget.config.travelStory.minimumDays,
+                minimumPlaceCount: widget.config.travelStory.minimumPlaceCount,
+                maxGap: widget.config.travelStory.maxGap,
+                locationPrecision: widget.config.travelStory.locationPrecision,
+              ),
+              personTimeline: widget.config.personTimeline,
+              annualTogether: widget.config.annualTogether,
+              longTermEvolution: widget.config.longTermEvolution,
+              rankingWeights: widget.config.rankingWeights,
+            ),
+          );
+          setState(() {});
+        },
+      ),
+    );
+  }
+
+  Widget _candidateCard(MemoryCandidate candidate) {
+    final breakdown = widget.ranker.explain(candidate, widget.memoryContext);
+    final sensitivity = widget.sensitivityGuard.assess(candidate);
+    return Card(
+      margin: const EdgeInsets.only(bottom: AppSpacing.medium),
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.medium),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              candidate.type.name,
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            Text(candidate.safeTitleTemplate ?? candidate.id),
+            Text(
+              '${candidate.mediaIds.length} media · score ${breakdown.finalScore.toStringAsFixed(1)}',
+            ),
+            if (sensitivity.flags.isNotEmpty)
+              Text('Sensitivity flags: ${sensitivity.flags.join(', ')}'),
+            Wrap(
+              spacing: AppSpacing.small,
+              children: [
+                OutlinedButton(
+                  onPressed: () => setState(() => compareA = candidate),
+                  child: const Text('Set A'),
+                ),
+                OutlinedButton(
+                  onPressed: () => setState(() => compareB = candidate),
+                  child: const Text('Set B'),
+                ),
+              ],
+            ),
+            Wrap(
+              spacing: AppSpacing.small,
+              children: [
+                _feedback(candidate, '有意义'),
+                _feedback(candidate, '有惊喜'),
+                _feedback(candidate, '一般'),
+                _feedback(candidate, '不准确'),
+                _feedback(candidate, '不希望看到'),
+              ],
+            ),
+            ExpansionTile(
+              title: const Text('Score Breakdown / Reasons'),
+              children: [
+                ...breakdown.factors.entries.map(
+                  (entry) => ListTile(
+                    dense: true,
+                    title: Text(entry.key),
+                    trailing: Text(entry.value.toStringAsFixed(1)),
+                  ),
+                ),
+                ...candidate.reasons.map(
+                  (reason) => ListTile(dense: true, title: Text(reason)),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _feedback(MemoryCandidate candidate, String label) => TextButton(
+    onPressed: () => widget.onSaveEvaluation(candidate, [label]),
+    child: Text(label),
+  );
+
+  Widget _comparePane() => Row(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Expanded(child: _compareItem('A', compareA)),
+      const SizedBox(width: AppSpacing.medium),
+      Expanded(child: _compareItem('B', compareB)),
+    ],
+  );
+
+  Widget _compareItem(String label, MemoryCandidate? candidate) {
+    if (candidate == null) return Text('$label: not selected');
+    final breakdown = widget.ranker.explain(candidate, widget.memoryContext);
+    final sensitivity = widget.sensitivityGuard.assess(candidate);
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.medium),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('$label · ${candidate.type.name}'),
+            Text('Score ${breakdown.finalScore.toStringAsFixed(1)}'),
+            Text(
+              'Risk ${sensitivity.flags.isEmpty ? 'none' : sensitivity.flags.join(',')}',
+            ),
+            ...candidate.reasons.take(3).map(Text.new),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+const _allRuleNames = [
+  'DateClusterRule',
+  'SamePlaceRule',
+  'YearRecapRule',
+  'SamePlaceAcrossYearsRule',
+  'FirstMemoryRule',
+  'TravelStoryRule',
+  'PersonTimelineRule',
+  'AnnualTogetherRule',
+  'LongTermEvolutionRule',
+];
+
+String _yearRange(MemoryCandidate c) {
+  final start = c.period.start.year;
+  final end = c.period.end.year;
+  return start == end ? '$start' : '$start — $end';
+}
+
+String _dateRange(MemoryCandidate c) {
+  final start = c.period.start;
+  final end = c.period.end;
+  return '${start.year}.${start.month}.${start.day} — ${end.year}.${end.month}.${end.day}';
+}
+
+Map<int, List<MediaAsset>> _assetsByYear(List<MediaAsset> assets) {
+  final result = <int, List<MediaAsset>>{};
+  for (final asset in assets) {
+    final year = asset.creationDate?.year;
+    if (year == null) continue;
+    (result[year] ??= []).add(asset);
+  }
+  return Map.fromEntries(
+    result.entries.toList()..sort((a, b) => a.key.compareTo(b.key)),
+  );
 }

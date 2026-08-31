@@ -1,0 +1,63 @@
+{
+  "@@locale": "en",
+  "appTitle": "LifeMovie",
+  "onboardingTitle": "Rediscover the stories already in your photos",
+  "onboardingSubtitle": "Your photos stay on this device. We organize time, places, and memory signals locally first.",
+  "onboardingCta": "Start",
+  "onboardingRetry": "Try again",
+  "permissionUnavailable": "Photo access is unavailable. You can review it in Settings.",
+  "limitedPermissionHint": "You can start with selected photos and add more later.",
+  "manageLimitedPhotos": "Manage selected photos",
+  "indexingTitle": "Organizing your photos",
+  "indexingCount": "Indexed {count} photos and videos",
+  "@indexingCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "feedDateToday": "Today",
+  "feedIntro": "Today, I found a few stories.",
+  "feedSummary": "{total} indexed · {photos} photos · {videos} videos",
+  "@feedSummary": {
+    "placeholders": {
+      "total": {
+        "type": "int"
+      },
+      "photos": {
+        "type": "int"
+      },
+      "videos": {
+        "type": "int"
+      }
+    }
+  },
+  "privacySummary": "Original photos stay on this device.",
+  "emptyFeedTitle": "No stable memories yet",
+  "emptyFeedSubtitle": "Refresh or add more accessible photos.",
+  "cardCtaYears": "See these years",
+  "cardCtaMemory": "See this memory",
+  "detailTitle": "This memory",
+  "detailTimeline": "Timeline",
+  "detailPhotos": "{count} photos",
+  "@detailPhotos": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "detailVideos": "{count} videos",
+  "@detailVideos": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "detailLocationHint": "Location signals available",
+  "personTimelineTitle": "Across the years",
+  "memoryLab": "Memory Lab",
+  "debugOpenLab": "Open Memory Lab"
+}

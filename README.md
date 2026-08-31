@@ -1,4 +1,4 @@
-# AI Memory Foundation
+# LifeMovie
 
 AI Native personal memory video app foundation. The product direction is intentionally open: `Memory Discovery → Person Story → Memory Movie → Family Memory`.
 
@@ -28,6 +28,19 @@ cd apps/memory_app && flutter run
 ```
 
 For the full Sprint 0.5 verification report, see [Sprint 0.5 Report](docs/SPRINT_0_5_REPORT.md).
+
+## Sprint 0.8 status
+
+Sprint 0.8 moves the project from a real-data engineering prototype toward a Chinese-first Memory Discovery product prototype:
+
+- Added memory-intelligence rules for same place across years, first memory, travel story, annual together and long-term evolution.
+- Kept person intelligence on injected/mock `personIds`; no production face recognition or relationship inference is implemented.
+- Upgraded ranking to V0.2 with explainable signals, sensitivity penalty, candidate deduplication and feed diversity.
+- Added local anonymous `MemoryEvaluation` feedback for Memory Lab tuning.
+- Added Flutter ARB localization with Simplified Chinese as the default product language.
+- Upgraded the app toward warm minimal editorial story feed, memory detail timeline and debug-only Memory Lab V0.2.
+
+Real user validation is still pending. Do not describe Sprint 0.8 as product PASS until 5-10 real libraries have been evaluated for meaningfulness, surprise, accuracy and safety.
 
 ## Architecture entry points
 

@@ -71,7 +71,17 @@ class DateTimeRange {
   Duration get duration => end.difference(start);
 }
 
-enum MemoryCandidateType { dateCluster, samePlace, yearRecap, personTimeline }
+enum MemoryCandidateType {
+  dateCluster,
+  samePlace,
+  yearRecap,
+  personTimeline,
+  samePlaceAcrossYears,
+  firstMemory,
+  travelStory,
+  annualTogether,
+  longTermEvolution,
+}
 
 class MemoryCandidate {
   const MemoryCandidate({
@@ -81,9 +91,12 @@ class MemoryCandidate {
     required this.mediaIds,
     this.personIds = const [],
     this.placeIds = const [],
+    this.representativeMediaIds = const [],
     this.score = 0,
     this.reasons = const [],
     this.metadata = const {},
+    this.safeTitleTemplate,
+    this.safeSubtitleTemplate,
   });
   final String id;
   final MemoryCandidateType type;
@@ -91,9 +104,13 @@ class MemoryCandidate {
   final List<String> mediaIds;
   final List<String> personIds;
   final List<String> placeIds;
+  final List<String> representativeMediaIds;
   final double score;
   final List<String> reasons;
   final Map<String, Object?> metadata;
+  final String? safeTitleTemplate;
+  final String? safeSubtitleTemplate;
+
   MemoryCandidate withScore(double value) => MemoryCandidate(
     id: id,
     type: type,
@@ -101,10 +118,64 @@ class MemoryCandidate {
     mediaIds: mediaIds,
     personIds: personIds,
     placeIds: placeIds,
+    representativeMediaIds: representativeMediaIds,
     score: value,
     reasons: reasons,
     metadata: metadata,
+    safeTitleTemplate: safeTitleTemplate,
+    safeSubtitleTemplate: safeSubtitleTemplate,
   );
+}
+
+class MemoryEvaluation {
+  const MemoryEvaluation({
+    required this.candidateId,
+    required this.ruleType,
+    required this.accuracy,
+    required this.meaningfulness,
+    required this.surprise,
+    required this.clarity,
+    required this.sensitivity,
+    this.labels = const [],
+    required this.createdAt,
+  });
+
+  final String candidateId;
+  final MemoryCandidateType ruleType;
+  final int accuracy;
+  final int meaningfulness;
+  final int surprise;
+  final int clarity;
+  final int sensitivity;
+  final List<String> labels;
+  final DateTime createdAt;
+
+  Map<String, Object?> toJson() => {
+    'candidateId': candidateId,
+    'ruleType': ruleType.name,
+    'accuracy': accuracy,
+    'meaningfulness': meaningfulness,
+    'surprise': surprise,
+    'clarity': clarity,
+    'sensitivity': sensitivity,
+    'labels': labels,
+    'createdAt': createdAt.toIso8601String(),
+  };
+
+  static MemoryEvaluation fromJson(Map<String, Object?> json) =>
+      MemoryEvaluation(
+        candidateId: json['candidateId']! as String,
+        ruleType: MemoryCandidateType.values.byName(
+          json['ruleType']! as String,
+        ),
+        accuracy: json['accuracy']! as int,
+        meaningfulness: json['meaningfulness']! as int,
+        surprise: json['surprise']! as int,
+        clarity: json['clarity']! as int,
+        sensitivity: json['sensitivity']! as int,
+        labels: (json['labels'] as List? ?? const []).cast<String>(),
+        createdAt: DateTime.parse(json['createdAt']! as String),
+      );
 }
 
 class Memory {

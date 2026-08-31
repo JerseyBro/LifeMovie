@@ -19,16 +19,24 @@ void main() {
           DateClusterRule(),
           SamePlaceRule(),
           YearRecapRule(),
+          SamePlaceAcrossYearsRule(),
+          FirstMemoryRule(),
+          TravelStoryRule(),
           PersonTimelineRule(),
+          AnnualTogetherRule(),
+          LongTermEvolutionRule(),
         ],
       ).discover(context);
       final ranked = const WeightedMemoryRanker().rank(candidates, context);
+      final deduped = const MemoryCandidateDeduplicator().deduplicate(ranked);
+      final feed = const FeedDiversityController().diversify(deduped);
 
       expect(reconciliation.inserted, 120);
       expect(await index.count(), 120);
-      expect(ranked, isNotEmpty);
-      expect(ranked.first.score, greaterThan(0));
-      expect(ranked.first.reasons, isNotEmpty);
+      expect(feed, isNotEmpty);
+      expect(feed.first.score, greaterThan(0));
+      expect(feed.first.reasons, isNotEmpty);
+      expect(feed.first.safeTitleTemplate, isNotNull);
       await index.close();
     },
   );
@@ -36,7 +44,7 @@ void main() {
 
 List<MediaAsset> _syntheticAssets(int count) => List.generate(count, (i) {
   final day = 1 + (i % 24);
-  final year = 2024 + (i % 3);
+  final year = 2021 + (i % 6);
   final isVideo = i % 8 == 0;
   return MediaAsset(
     id: 'synthetic-$i',
@@ -49,6 +57,6 @@ List<MediaAsset> _syntheticAssets(int count) => List.generate(count, (i) {
     height: 900,
     location: GeoPoint(22.5 + (i % 3) * .03, 114.0 + (i % 3) * .03),
     isFavorite: i % 19 == 0,
-    personIds: i % 11 == 0 ? const ['synthetic-person'] : const [],
+    personIds: i % 7 == 0 ? const ['synthetic-person'] : const [],
   );
 });
