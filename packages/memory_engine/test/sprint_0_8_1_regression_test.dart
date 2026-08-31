@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:math' as math;
 
 import 'package:memory_domain/memory_domain.dart';
 import 'package:memory_engine/memory_engine.dart';
@@ -240,6 +241,54 @@ void main() {
     });
   });
 
+  // High latitude spatial
+  group('P0-2b High latitude clustering', () {
+    for (final lat in [0.0, 60.0, 70.0]) {
+      test('lat $lat°: ~400m same cluster, ~700m different cluster', () async {
+        final base = GeoPoint(lat, 0);
+        final near = _offsetEast(base, 400);
+        final far = _offsetEast(base, 700);
+        // 400m same cluster: create 3 assets each location repeated to meet minAssets
+        final nearAssets = [
+          _asset('near-$lat-1', DateTime(2026, 1, 1), location: base),
+          _asset('near-$lat-2', DateTime(2026, 1, 2), location: near),
+          _asset('near-$lat-3', DateTime(2026, 1, 3), location: base),
+        ];
+        final nearCandidates = await const SamePlaceRule(
+          clusterConfig: LocationClusterConfig(radiusMeters: 500),
+          maxSessionGap: Duration(days: 14),
+        ).discover(MemoryContext(assets: nearAssets));
+        expect(
+          nearCandidates,
+          isNotEmpty,
+          reason: '400m at $lat° should be same cluster',
+        );
+        expect(nearCandidates.first.placeIds, hasLength(1));
+
+        // 700m different cluster: two distinct places each with 3 assets
+        final farAssets = [
+          _asset('far-base-$lat-1', DateTime(2026, 1, 1), location: base),
+          _asset('far-base-$lat-2', DateTime(2026, 1, 2), location: base),
+          _asset('far-base-$lat-3', DateTime(2026, 1, 3), location: base),
+          _asset('far-$lat-1', DateTime(2026, 1, 4), location: far),
+          _asset('far-$lat-2', DateTime(2026, 1, 5), location: far),
+          _asset('far-$lat-3', DateTime(2026, 1, 6), location: far),
+        ];
+        final farCandidates = await const SamePlaceRule(
+          clusterConfig: LocationClusterConfig(radiusMeters: 500),
+          maxSessionGap: Duration(days: 14),
+        ).discover(MemoryContext(assets: farAssets));
+        expect(
+          farCandidates.length,
+          greaterThanOrEqualTo(2),
+          reason: '700m at $lat° should be different clusters',
+        );
+        final ids = farCandidates.expand((c) => c.placeIds).toSet();
+        expect(ids.length, 2);
+      });
+    }
+  });
+
   // Travel enrichment
   group('P0-3 Travel enrichment', () {
     test('travel candidate includes unlocated media in window', () async {
@@ -359,6 +408,28 @@ void main() {
     );
   });
 
+  group('P1-2b Leap year annual window', () {
+    test('Feb28/Feb29/Mar1 recurrence does not split incorrectly', () async {
+      // 2020 is leap, Feb29 exists; 2021 Feb28 and 2024 Feb29/Mar1 etc.
+      final assets = [
+        _asset('feb28-2021', DateTime(2021, 2, 28), personIds: const ['pLeap']),
+        _asset('feb29-2020', DateTime(2020, 2, 29), personIds: const ['pLeap']),
+        _asset('mar01-2022', DateTime(2022, 3, 1), personIds: const ['pLeap']),
+        _asset('feb28-2023', DateTime(2023, 2, 28), personIds: const ['pLeap']),
+      ];
+      final candidates = await const AnnualTogetherRule(
+        config: AnnualTogetherRuleConfig(minimumYearCount: 2, windowDays: 4),
+      ).discover(MemoryContext(assets: assets));
+      // All 4 days are within ~2 days circular distance when considering Feb28/29/Mar1 cluster
+      // With window 4, they should be grouped together (at least one candidate with 3+ years)
+      expect(candidates, isNotEmpty);
+      expect(
+        candidates.any((c) => (c.metadata['distinctYearCount'] as int) >= 3),
+        isTrue,
+      );
+    });
+  });
+
   // Localization boundary
   group('P0-5 Localization', () {
     test(
@@ -418,6 +489,13 @@ void main() {
 int _circularDayDistanceForTest(int a, int b) {
   final diff = (a - b).abs();
   return diff < 366 - diff ? diff : 366 - diff;
+}
+
+GeoPoint _offsetEast(GeoPoint base, double metersEast) {
+  final latRad = base.latitude * math.pi / 180;
+  final cosLat = math.cos(latRad).abs().clamp(0.01, 1.0);
+  final deltaLon = metersEast / (111000 * cosLat);
+  return GeoPoint(base.latitude, base.longitude + deltaLon);
 }
 
 MediaAsset _asset(

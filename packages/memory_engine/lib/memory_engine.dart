@@ -172,9 +172,15 @@ List<_LocationCluster> _buildLocationClusters(
     final bucketLon = (point.longitude / effectiveCellSize).floor();
     _LocationCluster? best;
     var bestDist = double.infinity;
-    // check 9 neighboring buckets
-    for (var dLat = -1; dLat <= 1; dLat++) {
-      for (var dLon = -1; dLon <= 1; dLon++) {
+    // Latitude-aware neighbor search: lon degrees shrink with cos(lat)
+    final latRad = _radians(point.latitude);
+    final cosLat = math.cos(latRad).abs().clamp(0.01, 1.0);
+    final lonDeltaDeg = config.radiusMeters / (111000 * cosLat);
+    final latDeltaDeg = config.radiusMeters / 111000;
+    final latCells = (latDeltaDeg / effectiveCellSize).ceil().clamp(1, 2);
+    final lonCells = (lonDeltaDeg / effectiveCellSize).ceil().clamp(1, 10);
+    for (var dLat = -latCells; dLat <= latCells; dLat++) {
+      for (var dLon = -lonCells; dLon <= lonCells; dLon++) {
         final key = '${bucketLat + dLat},${bucketLon + dLon}';
         final indices = bucketMap[key];
         if (indices == null) continue;
@@ -1459,23 +1465,6 @@ DateTimeRange _periodFor(List<MediaAsset> assets) {
   return DateTimeRange(dated.first.creationDate!, dated.last.creationDate!);
 }
 
-@Deprecated('Use _groupByPlaceCluster')
-Map<String, List<MediaAsset>> _groupByPlace(
-  Iterable<MediaAsset> assets,
-  int precision,
-) {
-  final groups = <String, List<MediaAsset>>{};
-  for (final asset in assets) {
-    final point = asset.location;
-    final date = asset.creationDate;
-    if (point == null || date == null) continue;
-    final key =
-        '${point.latitude.toStringAsFixed(precision)},${point.longitude.toStringAsFixed(precision)}';
-    (groups[key] ??= []).add(asset);
-  }
-  return groups;
-}
-
 List<List<MediaAsset>> _sessions(List<MediaAsset> assets, Duration maxGap) {
   final sorted = _dated(assets);
   final result = <List<MediaAsset>>[];
@@ -1523,13 +1512,6 @@ Map<String, int> _yearDistribution(Iterable<MediaAsset> assets) {
 
 int _videoCount(Iterable<MediaAsset> assets) =>
     assets.where((asset) => asset.type == MediaType.video).length;
-
-@Deprecated('Use circular day-of-year distance')
-String _annualWindow(DateTime date, int windowDays) {
-  final day = date.difference(DateTime(date.year)).inDays + 1;
-  final bucket = ((day - 1) / windowDays).floor();
-  return 'window-$bucket';
-}
 
 double _routeDistanceKm(List<MediaAsset> assets) {
   var distance = 0.0;

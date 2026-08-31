@@ -292,3 +292,45 @@ Sprint 0.8.1 gates (per §29):
 
 Device and real-user gates remain pending per §14–15; no fake completion claimed. Ready for Review before `Real Device Validation + First WOW Memory User Validation`.
 
+---
+
+# Sprint 0.8.1a Final Validation Cleanup — Addendum (on same branch, HEAD 2a236de → next)
+
+**Scope freeze:** only 3 correctness cleanups, no new product features, no new Rule, no backend, no UI framework change.
+
+## 1a. Analyze Cleanup
+
+- **Before:** `flutter analyze` 48 issues (0 errors, 2 warnings `unused _groupByPlace/_annualWindow` + 46 deprecated infos)
+- **After:** deleted `_groupByPlace` `packages/memory_engine/lib/memory_engine.dart:1462` and `_annualWindow` `1527` (already replaced by `_groupByPlaceCluster`/`_clusterByAnnualWindow`). `flutter analyze` now `0 errors / 0 warnings`, 46 infos remaining (all `deprecated_member_use` for `safeTitleTemplate` compat shim). `safeTitleTemplate` retained for Domain compat per instruction, formal UI (`MemoryCandidateCopyMapper`) and new tests (`copy_mapper_test.dart:9`) do not depend; remaining infos explained.
+- `dart format` run.
+
+## 2a. Evaluation Opaque ID Hardening
+
+- **Before:** `FNV-1a 64` with fixed salt `LifeMovie-eval-v1` (weak obfuscation) `memory_domain.dart:170`
+- **After:** `SHA-256(appNamespace + type + rawId)` `memory_domain.dart:1` imports `package:crypto/crypto.dart`, `memory_domain/pubspec.yaml:6` adds `crypto: ^3.0.3`. `opaqueCandidateId` now `sha256(utf8(appNamespace:type:rawId)).toString().substring(0,16)` → `eval-` + 16 hex (64-bit truncation of 256-bit digest, preimage resistant). App namespace `LifeMovie-eval-v1` is app-level (not per-install). True per-install would require secure random persisted per device (e.g., `NSUserDefaults`/`EncryptedSharedPreferences` file next to evaluation store); scope enlarged, so documented boundary: current provides cryptographic one-way hash preventing direct reversal of raw `place-years-…` / `personIds` / `assetId`, but installation-unique namespace remains future work.
+- **Test:** same raw `place-years-22.54321,114.06789` persists as `eval-` 16 hex, file `not contains 22.54321/114.06789/rawId` still pass (`sprint_0_8_1_regression_test.dart:285`).
+
+## 3a. Spatial High-Latitude Correctness
+
+- **Issue:** fixed `cellSize 0.0045°` + 9-neighbor assumed 111km/° for both lat/lon; at 60°/70° lon meters per degree = `111km*cos(lat)` (≈55km/38km), radius 500m covers `lonDelta 0.009°/0.012°` > cellSize, so true 400m point could be 2–3 cells away and missed.
+- **Fix:** `_buildLocationClusters` `memory_engine.dart:156` now latitude-aware: `lonDelta = radius/(111000*cos(lat))`, `lonCells = ceil(lonDelta/cellSize)` (clamped 1–10), `latCells = ceil(latDelta/cellSize)` (1–2). Search iterates `±latCells`/`±lonCells` (at 0° 3×3=9, at 70° 3×7=21) before Haversine `distance <= radius` final check.
+- **Tests:** new `P0-2b` in `sprint_0_8_1_regression_test.dart:162` for lat 0°/60°/70° each `~400m same cluster` vs `~700m different cluster` using `_offsetEast` helper (uses `cos(lat)`), all pass. Previous rounding-boundary tests retained.
+- **Performance:** 50K median all-rules 352ms → 520ms (+48%), top10 405ms → 642ms; 60K top10 594ms → 820ms; 75K 715ms → 1080ms. Still <2s, no O(n²), high-lat expansion limited to ≤21 cells, acceptable per § Verification.
+
+## 4a. Annual Leap-Year Regression (extra test, no logic change)
+
+- Added `P1-2b` `sprint_0_8_1_regression_test.dart:372` Feb28(2021)/Feb29(2020)/Mar1(2022)/Feb28(2023) with `windowDays 4` → at least one candidate `distinctYearCount >=3`, verifying leap-year `dayOfYear` handling (Feb29 day 60 vs Feb28 day 59 distance 1) does not incorrectly split.
+
+## Verification (0.8.1a)
+
+- `flutter analyze`: `0 errors / 0 warnings`, 46 infos (deprecated compat) — explained above.
+- `dart test` `memory_domain`: pass
+- `flutter test` `media_library`: 11 pass
+- `flutter test` `memory_engine`: 31 pass (27 + 4 new: 3 high-lat +1 leap)
+- `flutter test` `apps/memory_app`: 7 pass (plus performance)
+- `flutter build ios --no-codesign`: pass 17.0MB
+- Performance re-run: 50K 642ms / 75K 1080ms top10 (see above), still pass gate `<2s`
+- Git: branch `feat/memory-intelligence-v0.8`, HEAD `2a236de` → new `fix: finalize pre-validation correctness cleanup`, no merge to main, pushed to origin.
+
+**Verdict (0.8.1a): PASS — READY FOR DEVICE VALIDATION** (all gates equal 0.8.1 plus hardened crypto and high-lat, analyze 0 warnings, tests pass, iOS build pass, branch pushed, main not merged).
+

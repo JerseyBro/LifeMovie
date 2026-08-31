@@ -1,5 +1,9 @@
 library;
 
+import 'dart:convert';
+
+import 'package:crypto/crypto.dart';
+
 enum MediaType { image, video, livePhoto, audio }
 
 class GeoPoint {
@@ -165,21 +169,21 @@ class MemoryEvaluation {
   /// Kept for migration; [candidateId] should already be opaque after 0.8.1.
   final String? anonymousCandidateId;
 
-  /// Stable opaque id for a raw candidate id. Uses FNV-1a 64 with app salt.
-  /// Result is 16-char hex, no raw coordinates or ids leak.
+  /// Stable opaque id for a raw candidate id. Uses SHA-256 with app namespace.
+  /// App namespace is `LifeMovie-eval-v1` (app-level, not per-install — see
+  /// `docs/SPRINT_0_8_1_FIX_REPORT.md` privacy boundary). True per-install
+  /// would require secure storage for a random per-device namespace; current
+  /// still provides cryptographic preimage resistance and prevents direct
+  /// reversal of raw `place-years-…`, person or asset ids.
+  /// Result is `eval-` + 16 hex (64-bit truncation of 256-bit digest).
   static String opaqueCandidateId(
     String rawCandidateId,
     MemoryCandidateType type,
   ) {
-    const salt = 'LifeMovie-eval-v1';
-    final input = '${type.name}:$rawCandidateId:$salt';
-    var hash = 0xcbf29ce484222325;
-    const prime = 0x100000001b3;
-    for (final code in input.codeUnits) {
-      hash ^= code;
-      hash = (hash * prime) & 0xFFFFFFFFFFFFFFFF;
-    }
-    final hex = hash.toUnsigned(64).toRadixString(16).padLeft(16, '0');
+    const appNamespace = 'LifeMovie-eval-v1';
+    final input = '$appNamespace:${type.name}:$rawCandidateId';
+    final digest = sha256.convert(utf8.encode(input)).toString();
+    final hex = digest.substring(0, 16);
     return 'eval-$hex';
   }
 
