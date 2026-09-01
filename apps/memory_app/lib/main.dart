@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:analytics/analytics.dart';
 import 'package:ai_gateway/ai_gateway.dart';
 import 'package:design_system/design_system.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:media_library/media_library.dart';
@@ -87,7 +88,6 @@ class _MemoryHomePageState extends State<MemoryHomePage> {
   IndexProgress? progress;
   bool onboardingComplete = false;
   bool scanning = false;
-  String? selectedId;
   String? failureMessage;
 
   MemoryRanker get ranker => WeightedMemoryRanker(
@@ -344,29 +344,6 @@ class _MemoryHomePageState extends State<MemoryHomePage> {
     if (scanning) {
       return _IndexingPage(progress: progress);
     }
-    if (selectedId != null) {
-      final candidate = feedCandidates.firstWhere((c) => c.id == selectedId);
-      final assetsById = {for (final asset in indexedAssets) asset.id: asset};
-      final mediaIds = candidate.representativeMediaIds.isEmpty
-          ? candidate.mediaIds
-          : candidate.representativeMediaIds;
-      return _Detail(
-        candidate: candidate,
-        allAssets: candidate.mediaIds
-            .map((id) => assetsById[id])
-            .whereType<MediaAsset>()
-            .toList(growable: false),
-        representativeAssets: mediaIds
-            .map((id) => assetsById[id])
-            .whereType<MediaAsset>()
-            .toList(growable: false),
-        onBack: () => setState(() => selectedId = null),
-        ai: ai,
-        repository: repository,
-        ranker: ranker,
-        contextAssets: indexedAssets,
-      );
-    }
     return Scaffold(
       appBar: AppBar(
         title: Text(l10n.appTitle),
@@ -441,16 +418,42 @@ class _MemoryHomePageState extends State<MemoryHomePage> {
                         candidate: candidate,
                         repository: repository,
                         thumbnailAssetId: _thumbnailId(candidate),
-                        onTap: () {
-                          analytics.track('memory_candidate_opened', {
-                            'rule': candidate.type.name,
-                            'scoreBucket': (candidate.score ~/ 10) * 10,
-                          });
-                          analytics.track('memory_opened', {
-                            'rule': candidate.type.name,
-                          });
-                          setState(() => selectedId = candidate.id);
-                        },
+                          onTap: () {
+                            analytics.track('memory_candidate_opened', {
+                              'rule': candidate.type.name,
+                              'scoreBucket': (candidate.score ~/ 10) * 10,
+                            });
+                            analytics.track('memory_opened', {
+                              'rule': candidate.type.name,
+                            });
+                            final assetsById = {
+                              for (final asset in indexedAssets)
+                                asset.id: asset
+                            };
+                            final mediaIds = candidate.representativeMediaIds.isEmpty
+                                ? candidate.mediaIds
+                                : candidate.representativeMediaIds;
+                            Navigator.of(context).push(
+                              CupertinoPageRoute(
+                                builder: (_) => _Detail(
+                                  candidate: candidate,
+                                  allAssets: candidate.mediaIds
+                                      .map((id) => assetsById[id])
+                                      .whereType<MediaAsset>()
+                                      .toList(growable: false),
+                                  representativeAssets: mediaIds
+                                      .map((id) => assetsById[id])
+                                      .whereType<MediaAsset>()
+                                      .toList(growable: false),
+                                  onBack: () => Navigator.of(context).pop(),
+                                  ai: ai,
+                                  repository: repository,
+                                  ranker: ranker,
+                                  contextAssets: indexedAssets,
+                                ),
+                              ),
+                            );
+                          },
                       ),
                     ),
                   ),
@@ -623,6 +626,7 @@ class _MemoryCard extends StatelessWidget {
     final copy = const MemoryCandidateCopyMapper().map(candidate, l10n);
     return LifeStoryCard(
       hero: _Thumbnail(
+        key: ValueKey(thumbnailAssetId),
         repository: repository,
         assetId: thumbnailAssetId,
         size: 720,
@@ -687,10 +691,23 @@ class _Detail extends StatelessWidget {
         padding: const EdgeInsets.all(AppSpacing.large),
         children: [
           if (representativeAssets.isNotEmpty)
-            _Thumbnail(
-              repository: repository,
-              assetId: representativeAssets.first.id,
-              size: 900,
+            GestureDetector(
+              onTap: () {
+                Navigator.of(context).push(
+                  CupertinoPageRoute(
+                    builder: (_) => _FullscreenPhotoViewer(
+                      repository: repository,
+                      assets: representativeAssets,
+                      initialIndex: 0,
+                    ),
+                  ),
+                );
+              },
+              child: _Thumbnail(
+                repository: repository,
+                assetId: representativeAssets.first.id,
+                size: 900,
+              ),
             ),
           const SizedBox(height: AppSpacing.large),
           Text(
@@ -776,6 +793,7 @@ class _ThumbnailGrid extends StatelessWidget {
       crossAxisSpacing: AppSpacing.small,
     ),
     itemBuilder: (context, index) => _Thumbnail(
+      key: ValueKey(assets[index].id),
       repository: repository,
       assetId: assets[index].id,
       size: 220,
@@ -784,11 +802,12 @@ class _ThumbnailGrid extends StatelessWidget {
 }
 
 class _Thumbnail extends StatefulWidget {
-  const _Thumbnail({
-    required this.repository,
-    required this.assetId,
-    required this.size,
-  });
+    const _Thumbnail({
+        super.key,
+        required this.repository,
+        required this.assetId,
+        required this.size,
+    });
 
   final MediaRepository repository;
   final String? assetId;
@@ -799,45 +818,163 @@ class _Thumbnail extends StatefulWidget {
 }
 
 class _ThumbnailState extends State<_Thumbnail> {
-  late final String requestId =
-      '${widget.assetId ?? 'empty'}-${DateTime.now().microsecondsSinceEpoch}';
-  late final Future<Uint8List?> thumbnail = widget.assetId == null
-      ? Future.value()
-      : widget.repository.loadThumbnail(
-          widget.assetId!,
-          size: widget.size,
-          requestId: requestId,
+    String? _requestId;
+    Future<Uint8List?>? _thumbnail;
+
+    @override
+    void initState() {
+        super.initState();
+        _loadThumbnail();
+    }
+
+    void _loadThumbnail() {
+        if (widget.assetId == null) {
+            _thumbnail = Future.value();
+            return;
+        }
+        _requestId = '${widget.assetId}-${DateTime.now().microsecondsSinceEpoch}';
+        _thumbnail = widget.repository.loadThumbnail(
+            widget.assetId!,
+            size: widget.size,
+            requestId: _requestId!,
         );
+    }
 
-  @override
-  void dispose() {
-    widget.repository.cancelThumbnailRequest(requestId);
-    super.dispose();
-  }
+    void _cancelCurrent() {
+        if (_requestId != null) {
+            widget.repository.cancelThumbnailRequest(_requestId!);
+        }
+    }
 
-  @override
-  Widget build(BuildContext context) => ClipRRect(
-    borderRadius: BorderRadius.circular(AppRadius.hero),
-    child: AspectRatio(
-      aspectRatio: 1,
-      child: FutureBuilder<Uint8List?>(
-        future: thumbnail,
-        builder: (context, snapshot) {
-          final bytes = snapshot.data;
-          if (bytes == null) {
-            return ColoredBox(
-              color: AppColor.accent.withValues(alpha: .14),
-              child: const Icon(
-                Icons.photo_library_outlined,
-                color: AppColor.accent,
-              ),
-            );
-          }
-          return Image.memory(bytes, fit: BoxFit.cover, gaplessPlayback: true);
-        },
-      ),
-    ),
-  );
+    @override
+    void dispose() {
+        _cancelCurrent();
+        super.dispose();
+    }
+
+    @override
+    Widget build(BuildContext context) => ClipRRect(
+        borderRadius: BorderRadius.circular(AppRadius.hero),
+        child: AspectRatio(
+            aspectRatio: 1,
+            child: FutureBuilder<Uint8List?>(
+                future: _thumbnail,
+                builder: (context, snapshot) {
+                    final bytes = snapshot.data;
+                    if (bytes == null) {
+                        return ColoredBox(
+                            color: AppColor.accent.withValues(alpha: .14),
+                            child: const Icon(
+                                Icons.photo_library_outlined,
+                                color: AppColor.accent,
+                            ),
+                        );
+                    }
+                    return Image.memory(bytes, fit: BoxFit.cover, gaplessPlayback: true);
+                },
+            ),
+        ),
+    );
+}
+
+class _FullscreenPhotoViewer extends StatefulWidget {
+    const _FullscreenPhotoViewer({
+        required this.repository,
+        required this.assets,
+        required this.initialIndex,
+    });
+    final MediaRepository repository;
+    final List<MediaAsset> assets;
+    final int initialIndex;
+
+    @override
+    State<_FullscreenPhotoViewer> createState() =>
+        _FullscreenPhotoViewerState();
+}
+
+class _FullscreenPhotoViewerState extends State<_FullscreenPhotoViewer> {
+    late int _currentIndex;
+
+    @override
+    void initState() {
+        super.initState();
+        _currentIndex = widget.initialIndex;
+    }
+
+    @override
+    Widget build(BuildContext context) => Scaffold(
+        backgroundColor: Colors.black,
+        body: SafeArea(
+            child: Stack(
+                children: [
+                    PageView.builder(
+                        itemCount: widget.assets.length,
+                        onPageChanged: (index) {
+                            setState(() => _currentIndex = index);
+                        },
+                        itemBuilder: (context, index) {
+                            final asset = widget.assets[index];
+                            return GestureDetector(
+                                onTap: () => Navigator.of(context).pop(),
+                                child: InteractiveViewer(
+                                    boundaryMargin:
+                                        const EdgeInsets.all(20),
+                                    minScale: 0.5,
+                                    maxScale: 5.0,
+                                    child: FutureBuilder<Uint8List?>(
+                                        future: widget.repository
+                                            .loadThumbnail(
+                                                asset.id,
+                                                size: 960,
+                                            ),
+                                        builder: (context, snapshot) {
+                                            final bytes =
+                                                snapshot.data;
+                                            if (bytes == null) {
+                                                return const Center(
+                                                    child: CircularProgressIndicator(
+                                                        color: Colors
+                                                            .white),
+                                                );
+                                            }
+                                            return Image.memory(
+                                                bytes,
+                                                fit: BoxFit
+                                                    .contain,
+                                            );
+                                        },
+                                    ),
+                                ),
+                            );
+                        },
+                    ),
+                    Positioned(
+                        top: 8,
+                        left: 12,
+                        child: IconButton(
+                            icon: const Icon(Icons.close,
+                                color: Colors.white, size: 28),
+                            onPressed: () =>
+                                Navigator.of(context).pop(),
+                        ),
+                    ),
+                    Positioned(
+                        bottom: 16,
+                        left: 12,
+                        right: 12,
+                        child: Text(
+                            '${_currentIndex + 1} / ${widget.assets.length}',
+                            style: const TextStyle(
+                                color: Colors.white70,
+                                fontSize: 14,
+                            ),
+                            textAlign: TextAlign.center,
+                        ),
+                    ),
+                ],
+            ),
+        ),
+    );
 }
 
 class _MemoryLab extends StatefulWidget {

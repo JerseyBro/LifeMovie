@@ -124,6 +124,11 @@ import UIKit
       let cancelled = (info?[PHImageCancelledKey] as? Bool) ?? false
       let degraded = (info?[PHImageResultIsDegradedKey] as? Bool) ?? false
       if cancelled || degraded {
+        result(nil)
+        return
+      }
+      if asset.localIdentifier != id {
+        result(nil)
         return
       }
       guard let data = image?.jpegData(compressionQuality: 0.72) else {
