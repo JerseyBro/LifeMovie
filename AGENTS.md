@@ -61,3 +61,21 @@ Every rule, ranker, repository behavior, permission mapping, and cross-package p
 ## Git
 
 One clear task per commit; no real photos, secrets, generated build outputs, or private test material.
+
+<!-- JAES:BEGIN -->
+# JAES Lite
+
+开始任务前读取：
+
+- `.jaes/ENTRY.md`
+- `.jaes/AGENTS.md`
+- `.jaes/projects/lifemovie/PROJECT.md`
+- `.jaes/projects/lifemovie/ARCHITECTURE.md`
+- `.jaes/projects/lifemovie/BOUNDARIES.md`
+- `.jaes/projects/lifemovie/STATUS.md`
+- 当前任务 Skill：`.jaes/skills/*/SKILL.md`
+
+当前 tracked code 是事实来源。
+JAES 生成缓存不得直接编辑。
+仓库本地规则与 JAES 规则冲突时，停止并报告。
+<!-- JAES:END -->
