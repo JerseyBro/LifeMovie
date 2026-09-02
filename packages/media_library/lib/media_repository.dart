@@ -62,6 +62,12 @@ abstract interface class MediaRepository {
     String? requestId,
   });
 
+  Future<Uint8List?> loadPreview(
+    String assetId, {
+    int? maxPixelSize,
+    String? requestId,
+  });
+
   Future<void> cancelThumbnailRequest(String requestId);
   Future<MediaPermissionStatus> presentLimitedLibraryPicker();
   Future<MediaPermissionStatus> getPermissionStatus();
@@ -113,6 +119,13 @@ class MockMediaRepository implements MediaRepository {
   Future<Uint8List?> loadThumbnail(
     String assetId, {
     int size = 320,
+    String? requestId,
+  }) async => thumbnails[assetId];
+
+  @override
+  Future<Uint8List?> loadPreview(
+    String assetId, {
+    int? maxPixelSize,
     String? requestId,
   }) async => thumbnails[assetId];
 
@@ -197,6 +210,17 @@ class PhotoKitMediaRepository implements MediaRepository {
   Future<void> cancelThumbnailRequest(String requestId) async {
     await _invoke<void>('cancelThumbnailRequest', {'requestId': requestId});
   }
+
+  @override
+  Future<Uint8List?> loadPreview(
+    String assetId, {
+    int? maxPixelSize,
+    String? requestId,
+  }) async => _invoke<Uint8List>('loadPreview', {
+    'id': assetId,
+    'maxPixelSize': maxPixelSize,
+    'requestId': requestId,
+  });
 
   @override
   Future<MediaPermissionStatus> presentLimitedLibraryPicker() async =>

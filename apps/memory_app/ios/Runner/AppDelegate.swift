@@ -30,6 +30,9 @@ import UIKit
       case "loadThumbnail":
         let args = call.arguments as? [String: Any]
         self.loadThumbnail(id: args?["id"] as? String, size: args?["size"] as? Int ?? 320, requestId: args?["requestId"] as? String, result: result)
+      case "loadPreview":
+        let args = call.arguments as? [String: Any]
+        self.loadPreview(id: args?["id"] as? String, maxPixelSize: args?["maxPixelSize"] as? Int, requestId: args?["requestId"] as? String, result: result)
       case "cancelThumbnailRequest":
         let args = call.arguments as? [String: Any]
         self.cancelThumbnailRequest(requestId: args?["requestId"] as? String)
@@ -113,25 +116,98 @@ import UIKit
     let options = PHImageRequestOptions()
     options.deliveryMode = .opportunistic
     options.resizeMode = .fast
-    options.isNetworkAccessAllowed = false
+    options.isNetworkAccessAllowed = true
     options.isSynchronous = false
 
     let targetSize = CGSize(width: max(size, 1), height: max(size, 1))
     let request = imageManager.requestImage(for: asset, targetSize: targetSize, contentMode: .aspectFill, options: options) { image, info in
-      if let requestId {
-        self.thumbnailRequests.removeValue(forKey: requestId)
-      }
       let cancelled = (info?[PHImageCancelledKey] as? Bool) ?? false
       let degraded = (info?[PHImageResultIsDegradedKey] as? Bool) ?? false
-      if cancelled || degraded {
-        result(nil)
+      let error = info?[PHImageErrorKey] as? NSError
+
+      // Terminal states: cancelled, error, or final (non-degraded) result
+      let isTerminal = cancelled || error != nil || !degraded
+
+      if cancelled || error != nil {
+        if let requestId {
+          self.thumbnailRequests.removeValue(forKey: requestId)
+        }
+        if cancelled {
+          result(nil)
+        } else if let error = error {
+          result(FlutterError(code: "phasset_error", message: error.localizedDescription, details: nil))
+        }
         return
+      }
+
+      if degraded {
+        // Intermediate degraded callback - wait for final
+        return
+      }
+
+      // Final high-quality callback
+      if let requestId {
+        self.thumbnailRequests.removeValue(forKey: requestId)
       }
       if asset.localIdentifier != id {
         result(nil)
         return
       }
       guard let data = image?.jpegData(compressionQuality: 0.72) else {
+        result(nil)
+        return
+      }
+      result(FlutterStandardTypedData(bytes: data))
+    }
+    if let requestId {
+      thumbnailRequests[requestId] = request
+    }
+  }
+
+  private func loadPreview(id: String?, maxPixelSize: Int?, requestId: String?, result: @escaping FlutterResult) {
+    guard let id else {
+      result(FlutterError(code: "missing_asset_id", message: "Missing asset id", details: nil))
+      return
+    }
+    let assets = PHAsset.fetchAssets(withLocalIdentifiers: [id], options: nil)
+    guard let asset = assets.firstObject else {
+      result(nil)
+      return
+    }
+
+    let options = PHImageRequestOptions()
+    options.deliveryMode = .highQualityFormat
+    options.resizeMode = .exact
+    options.isNetworkAccessAllowed = true
+    options.isSynchronous = false
+
+    let screenScale = UIScreen.main.scale
+    let maxSize = maxPixelSize ?? Int(UIScreen.main.bounds.width * screenScale)
+    let targetSize = CGSize(width: maxSize, height: maxSize)
+    let request = imageManager.requestImage(for: asset, targetSize: targetSize, contentMode: .aspectFit, options: options) { image, info in
+      let cancelled = (info?[PHImageCancelledKey] as? Bool) ?? false
+      let error = info?[PHImageErrorKey] as? NSError
+
+      if cancelled || error != nil {
+        if let requestId {
+          self.thumbnailRequests.removeValue(forKey: requestId)
+        }
+        if cancelled {
+          result(nil)
+        } else if let error = error {
+          result(FlutterError(code: "phasset_error", message: error.localizedDescription, details: nil))
+        }
+        return
+      }
+
+      if let requestId {
+        self.thumbnailRequests.removeValue(forKey: requestId)
+      }
+      if asset.localIdentifier != id {
+        result(nil)
+        return
+      }
+      guard let data = image?.jpegData(compressionQuality: 0.85) else {
         result(nil)
         return
       }

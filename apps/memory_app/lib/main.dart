@@ -894,11 +894,25 @@ class _FullscreenPhotoViewer extends StatefulWidget {
 
 class _FullscreenPhotoViewerState extends State<_FullscreenPhotoViewer> {
     late int _currentIndex;
+    late final Map<int, Future<Uint8List?>> _imageFutures = {};
 
     @override
     void initState() {
         super.initState();
         _currentIndex = widget.initialIndex;
+    }
+
+    Future<Uint8List?> _loadPreview(int index) {
+        if (_imageFutures.containsKey(index)) {
+            return _imageFutures[index]!;
+        }
+        final asset = widget.assets[index];
+        final future = widget.repository.loadPreview(
+            asset.id,
+            maxPixelSize: 2000,
+        );
+        _imageFutures[index] = future;
+        return future;
     }
 
     @override
@@ -913,7 +927,6 @@ class _FullscreenPhotoViewerState extends State<_FullscreenPhotoViewer> {
                             setState(() => _currentIndex = index);
                         },
                         itemBuilder: (context, index) {
-                            final asset = widget.assets[index];
                             return GestureDetector(
                                 onTap: () => Navigator.of(context).pop(),
                                 child: InteractiveViewer(
@@ -922,26 +935,41 @@ class _FullscreenPhotoViewerState extends State<_FullscreenPhotoViewer> {
                                     minScale: 0.5,
                                     maxScale: 5.0,
                                     child: FutureBuilder<Uint8List?>(
-                                        future: widget.repository
-                                            .loadThumbnail(
-                                                asset.id,
-                                                size: 960,
-                                            ),
+                                        future: _loadPreview(index),
                                         builder: (context, snapshot) {
-                                            final bytes =
-                                                snapshot.data;
-                                            if (bytes == null) {
+                                            switch (snapshot.connectionState) {
+                                            case ConnectionState.waiting:
                                                 return const Center(
                                                     child: CircularProgressIndicator(
-                                                        color: Colors
-                                                            .white),
+                                                        color: Colors.white),
                                                 );
+                                            case ConnectionState.done:
+                                              if (snapshot.hasError) {
+                                                return _ErrorView(
+                                                    onRetry: () {
+                                                      setState(() {
+                                                        _imageFutures.remove(index);
+                                                      });
+                                                    },
+                                                  );
+                                              }
+                                              final bytes = snapshot.data;
+                                              if (bytes == null) {
+                                                return _ErrorView(
+                                                    onRetry: () {
+                                                      setState(() {
+                                                        _imageFutures.remove(index);
+                                                      });
+                                                    },
+                                                  );
+                                              }
+                                              return Image.memory(
+                                                  bytes,
+                                                  fit: BoxFit.contain,
+                                              );
+                                            default:
+                                              return const SizedBox.shrink();
                                             }
-                                            return Image.memory(
-                                                bytes,
-                                                fit: BoxFit
-                                                    .contain,
-                                            );
                                         },
                                     ),
                                 ),
@@ -973,6 +1001,31 @@ class _FullscreenPhotoViewerState extends State<_FullscreenPhotoViewer> {
                     ),
                 ],
             ),
+        ),
+    );
+}
+
+class _ErrorView extends StatelessWidget {
+    const _ErrorView({required this.onRetry});
+    final VoidCallback onRetry;
+
+    @override
+    Widget build(BuildContext context) => Center(
+        child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+                const Icon(Icons.broken_image, color: Colors.white54, size: 48),
+                const SizedBox(height: 12),
+                const Text(
+                    '无法加载图片',
+                    style: TextStyle(color: Colors.white70, fontSize: 16),
+                ),
+                const SizedBox(height: 16),
+                FilledButton(
+                    onPressed: onRetry,
+                    child: const Text('重试'),
+                ),
+            ],
         ),
     );
 }

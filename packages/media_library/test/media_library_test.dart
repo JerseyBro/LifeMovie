@@ -290,6 +290,13 @@ class _FailingRepository implements MediaRepository {
   }) async => null;
 
   @override
+  Future<Uint8List?> loadPreview(
+    String assetId, {
+    int? maxPixelSize,
+    String? requestId,
+  }) async => null;
+
+  @override
   Future<MediaPermissionStatus> presentLimitedLibraryPicker() async =>
       MediaPermissionStatus.denied;
 
