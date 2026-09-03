@@ -17,9 +17,9 @@ Build an AI Native personal memory app that helps people rediscover stories alre
 
 ## Current stage
 
-Sprint 0.8 Memory Intelligence Prototype + Sprint 0.8.1 Pre-Validation Correctness Fix (same branch `feat/memory-intelligence-v0.8`, no merge to main yet).
+Sprint 0.9 Product Experience & First WOW polish is active on branch `feat/product-experience-v0.9` (not merged to main).
 
-Sprint 0.8.1 hardens year semantics (`YearMetrics`), distance-based location clustering, travel two-phase enrichment, evaluation opaque id, localization boundary (`MemoryCandidateCopyMapper` + ARB), and large-library paging — before real-device + 5–10 library validation. See `docs/SPRINT_0_8_1_FIX_REPORT.md`.
+Sprint 0.8.1 hardened year semantics (`YearMetrics`), distance-based location clustering, travel two-phase enrichment, evaluation opaque id, localization boundary (`MemoryCandidateCopyMapper` + ARB), and large-library paging. Sprint 0.9 focuses on Memory Detail V2, tappable gallery, fullscreen photo viewer gestures, preview-size separation, First WOW internal evaluation, and smaller presentation files. See `docs/SPRINT_0_8_1_FIX_REPORT.md` and `docs/SPRINT_0_9_REPORT.md`.
 
 The product is Simplified Chinese first. The immediate goal is not an AI video editor; it is Memory Discovery that can surface meaningful, surprising, safe and explainable stories from a local photo library.
 
@@ -53,6 +53,14 @@ Do not add backend, cloud sync, commercial analytics, production face identity, 
 - Formal user UI must use safe Chinese copy and avoid technical terms like MemoryCandidate, Rule, Score, Signal or MediaIndex.
 - Debug-only Memory Lab may expose technical rule names, score breakdown and raw reasons, but must not log exact GPS, photo paths, image bytes, person names or private user text.
 - `personIds` are injected/derived annotations for product validation only, not PhotoKit native metadata and not confirmed identity.
+
+## Sprint 0.9 implementation rules
+
+- Treat Memory Detail and photo browsing as the immediate product surface; all visible gallery/timeline photos must open the fullscreen viewer at the tapped index.
+- Use feed thumbnails for feed cards, medium preview for detail hero, and high-quality preview for fullscreen viewer. Do not load originals by default.
+- Fullscreen viewer must support swipe, double-tap zoom, tap chrome toggle, close, position indicator, and downward dismiss while avoiding obvious PageView/zoom conflicts.
+- First WOW evaluation is internal/debug only and must store local, anonymized feedback labels; do not upload real media or personal identifiers.
+- Presentation files should remain small enough for handoff; split screens/widgets incrementally instead of introducing a new framework.
 
 ## Tests and style
 

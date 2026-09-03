@@ -1,4 +1,6 @@
 import 'package:drift/native.dart';
+import 'package:memory_app/l10n/app_localizations_zh.dart';
+import 'package:memory_app/presentation/memory_candidate_copy_mapper.dart';
 import 'package:media_library/media_library.dart';
 import 'package:memory_domain/memory_domain.dart';
 import 'package:memory_engine/memory_engine.dart';
@@ -36,7 +38,12 @@ void main() {
       expect(feed, isNotEmpty);
       expect(feed.first.score, greaterThan(0));
       expect(feed.first.reasons, isNotEmpty);
-      expect(feed.first.safeTitleTemplate, isNotNull);
+      expect(
+        const MemoryCandidateCopyMapper()
+            .map(feed.first, AppLocalizationsZh())
+            .title,
+        isNotEmpty,
+      );
       await index.close();
     },
   );

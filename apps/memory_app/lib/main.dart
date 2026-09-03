@@ -9,6 +9,9 @@ import 'package:flutter/material.dart';
 import 'package:media_library/media_library.dart';
 import 'package:memory_app/l10n/app_localizations.dart';
 import 'package:memory_app/presentation/memory_candidate_copy_mapper.dart';
+import 'package:memory_app/screens/memory_lab_page.dart';
+import 'package:memory_app/screens/photo_viewer_page.dart';
+import 'package:memory_app/widgets/media_preview.dart';
 import 'package:memory_domain/memory_domain.dart';
 import 'package:memory_engine/memory_engine.dart';
 import 'package:path_provider/path_provider.dart';
@@ -306,10 +309,15 @@ class _MemoryHomePageState extends State<MemoryHomePage> {
     final evaluation = MemoryEvaluation.forCandidate(
       candidate,
       accuracy: labels.contains('不准确') ? 2 : 4,
-      meaningfulness: labels.contains('有意义') ? 5 : 3,
-      surprise: labels.contains('有惊喜') ? 5 : 3,
-      clarity: labels.contains('表达不舒服') ? 2 : 4,
-      sensitivity: labels.contains('不希望看到') || labels.contains('太私人') ? 2 : 5,
+      meaningfulness: labels.contains('有意义') || labels.contains('值得回看') ? 5 : 3,
+      surprise: labels.contains('有惊喜') || labels.contains('没想到') ? 5 : 3,
+      clarity: labels.contains('表达不舒服') || labels.contains('一般') ? 3 : 4,
+      sensitivity:
+          labels.contains('不希望看到') ||
+              labels.contains('不想看到') ||
+              labels.contains('太私人')
+          ? 2
+          : 5,
       labels: labels,
       createdAt: DateTime.now(),
     );
@@ -359,7 +367,7 @@ class _MemoryHomePageState extends State<MemoryHomePage> {
               tooltip: l10n.debugOpenLab,
               onPressed: () => Navigator.of(context).push(
                 MaterialPageRoute(
-                  builder: (_) => _MemoryLab(
+                  builder: (_) => MemoryLabPage(
                     stats: stats,
                     rawCandidates: rawCandidates,
                     rankedCandidates: rankedCandidates,
@@ -418,42 +426,45 @@ class _MemoryHomePageState extends State<MemoryHomePage> {
                         candidate: candidate,
                         repository: repository,
                         thumbnailAssetId: _thumbnailId(candidate),
-                          onTap: () {
-                            analytics.track('memory_candidate_opened', {
-                              'rule': candidate.type.name,
-                              'scoreBucket': (candidate.score ~/ 10) * 10,
-                            });
-                            analytics.track('memory_opened', {
-                              'rule': candidate.type.name,
-                            });
-                            final assetsById = {
-                              for (final asset in indexedAssets)
-                                asset.id: asset
-                            };
-                            final mediaIds = candidate.representativeMediaIds.isEmpty
-                                ? candidate.mediaIds
-                                : candidate.representativeMediaIds;
-                            Navigator.of(context).push(
-                              CupertinoPageRoute(
-                                builder: (_) => _Detail(
-                                  candidate: candidate,
-                                  allAssets: candidate.mediaIds
-                                      .map((id) => assetsById[id])
-                                      .whereType<MediaAsset>()
-                                      .toList(growable: false),
-                                  representativeAssets: mediaIds
-                                      .map((id) => assetsById[id])
-                                      .whereType<MediaAsset>()
-                                      .toList(growable: false),
-                                  onBack: () => Navigator.of(context).pop(),
-                                  ai: ai,
-                                  repository: repository,
-                                  ranker: ranker,
-                                  contextAssets: indexedAssets,
-                                ),
+                        onFeedback: kDebugMode
+                            ? (labels) => _saveEvaluation(candidate, labels)
+                            : null,
+                        onTap: () {
+                          analytics.track('memory_candidate_opened', {
+                            'rule': candidate.type.name,
+                            'scoreBucket': (candidate.score ~/ 10) * 10,
+                          });
+                          analytics.track('memory_opened', {
+                            'rule': candidate.type.name,
+                          });
+                          final assetsById = {
+                            for (final asset in indexedAssets) asset.id: asset,
+                          };
+                          final mediaIds =
+                              candidate.representativeMediaIds.isEmpty
+                              ? candidate.mediaIds
+                              : candidate.representativeMediaIds;
+                          Navigator.of(context).push(
+                            CupertinoPageRoute(
+                              builder: (_) => _Detail(
+                                candidate: candidate,
+                                allAssets: candidate.mediaIds
+                                    .map((id) => assetsById[id])
+                                    .whereType<MediaAsset>()
+                                    .toList(growable: false),
+                                representativeAssets: mediaIds
+                                    .map((id) => assetsById[id])
+                                    .whereType<MediaAsset>()
+                                    .toList(growable: false),
+                                onBack: () => Navigator.of(context).pop(),
+                                ai: ai,
+                                repository: repository,
+                                ranker: ranker,
+                                contextAssets: indexedAssets,
                               ),
-                            );
-                          },
+                            ),
+                          );
+                        },
                       ),
                     ),
                   ),
@@ -613,28 +624,39 @@ class _MemoryCard extends StatelessWidget {
     required this.repository,
     required this.thumbnailAssetId,
     required this.onTap,
+    this.onFeedback,
   });
 
   final MemoryCandidate candidate;
   final MediaRepository repository;
   final String? thumbnailAssetId;
   final VoidCallback onTap;
+  final Future<void> Function(List<String> labels)? onFeedback;
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final copy = const MemoryCandidateCopyMapper().map(candidate, l10n);
-    return LifeStoryCard(
-      hero: _Thumbnail(
-        key: ValueKey(thumbnailAssetId),
-        repository: repository,
-        assetId: thumbnailAssetId,
-        size: 720,
-      ),
-      title: copy.title,
-      metadata: copy.subtitle,
-      cta: _isYearBased(candidate) ? l10n.cardCtaYears : l10n.cardCtaMemory,
-      onTap: onTap,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        LifeStoryCard(
+          hero: MediaPreviewTile(
+            key: ValueKey(thumbnailAssetId),
+            repository: repository,
+            assetId: thumbnailAssetId,
+            size: feedPreviewSize,
+          ),
+          title: copy.title,
+          metadata: copy.subtitle,
+          cta: _isYearBased(candidate) ? l10n.cardCtaYears : l10n.cardCtaMemory,
+          onTap: onTap,
+        ),
+        if (onFeedback != null) ...[
+          const SizedBox(height: AppSpacing.small),
+          _FirstWowFeedbackBar(onFeedback: onFeedback!),
+        ],
+      ],
     );
   }
 
@@ -695,7 +717,7 @@ class _Detail extends StatelessWidget {
               onTap: () {
                 Navigator.of(context).push(
                   CupertinoPageRoute(
-                    builder: (_) => _FullscreenPhotoViewer(
+                    builder: (_) => FullscreenPhotoViewerPage(
                       repository: repository,
                       assets: representativeAssets,
                       initialIndex: 0,
@@ -703,10 +725,14 @@ class _Detail extends StatelessWidget {
                   ),
                 );
               },
-              child: _Thumbnail(
-                repository: repository,
-                assetId: representativeAssets.first.id,
-                size: 900,
+              child: AspectRatio(
+                aspectRatio: 1,
+                child: MediaPreview(
+                  repository: repository,
+                  assetId: representativeAssets.first.id,
+                  size: detailPreviewSize,
+                  usePreview: true,
+                ),
               ),
             ),
           const SizedBox(height: AppSpacing.large),
@@ -792,523 +818,45 @@ class _ThumbnailGrid extends StatelessWidget {
       mainAxisSpacing: AppSpacing.small,
       crossAxisSpacing: AppSpacing.small,
     ),
-    itemBuilder: (context, index) => _Thumbnail(
+    itemBuilder: (context, index) => MediaPreviewTile(
       key: ValueKey(assets[index].id),
       repository: repository,
       assetId: assets[index].id,
-      size: 220,
+      size: gridPreviewSize,
+      onTap: () => Navigator.of(context).push(
+        CupertinoPageRoute(
+          builder: (_) => FullscreenPhotoViewerPage(
+            repository: repository,
+            assets: assets,
+            initialIndex: index,
+          ),
+        ),
+      ),
     ),
   );
 }
 
-class _Thumbnail extends StatefulWidget {
-    const _Thumbnail({
-        super.key,
-        required this.repository,
-        required this.assetId,
-        required this.size,
-    });
+class _FirstWowFeedbackBar extends StatelessWidget {
+  const _FirstWowFeedbackBar({required this.onFeedback});
 
-  final MediaRepository repository;
-  final String? assetId;
-  final int size;
+  final Future<void> Function(List<String> labels) onFeedback;
 
   @override
-  State<_Thumbnail> createState() => _ThumbnailState();
-}
-
-class _ThumbnailState extends State<_Thumbnail> {
-    String? _requestId;
-    Future<Uint8List?>? _thumbnail;
-
-    @override
-    void initState() {
-        super.initState();
-        _loadThumbnail();
-    }
-
-    void _loadThumbnail() {
-        if (widget.assetId == null) {
-            _thumbnail = Future.value();
-            return;
-        }
-        _requestId = '${widget.assetId}-${DateTime.now().microsecondsSinceEpoch}';
-        _thumbnail = widget.repository.loadThumbnail(
-            widget.assetId!,
-            size: widget.size,
-            requestId: _requestId!,
-        );
-    }
-
-    void _cancelCurrent() {
-        if (_requestId != null) {
-            widget.repository.cancelThumbnailRequest(_requestId!);
-        }
-    }
-
-    @override
-    void dispose() {
-        _cancelCurrent();
-        super.dispose();
-    }
-
-    @override
-    Widget build(BuildContext context) => ClipRRect(
-        borderRadius: BorderRadius.circular(AppRadius.hero),
-        child: AspectRatio(
-            aspectRatio: 1,
-            child: FutureBuilder<Uint8List?>(
-                future: _thumbnail,
-                builder: (context, snapshot) {
-                    final bytes = snapshot.data;
-                    if (bytes == null) {
-                        return ColoredBox(
-                            color: AppColor.accent.withValues(alpha: .14),
-                            child: const Icon(
-                                Icons.photo_library_outlined,
-                                color: AppColor.accent,
-                            ),
-                        );
-                    }
-                    return Image.memory(bytes, fit: BoxFit.cover, gaplessPlayback: true);
-                },
-            ),
-        ),
-    );
-}
-
-class _FullscreenPhotoViewer extends StatefulWidget {
-    const _FullscreenPhotoViewer({
-        required this.repository,
-        required this.assets,
-        required this.initialIndex,
-    });
-    final MediaRepository repository;
-    final List<MediaAsset> assets;
-    final int initialIndex;
-
-    @override
-    State<_FullscreenPhotoViewer> createState() =>
-        _FullscreenPhotoViewerState();
-}
-
-class _FullscreenPhotoViewerState extends State<_FullscreenPhotoViewer> {
-    late int _currentIndex;
-    late final Map<int, Future<Uint8List?>> _imageFutures = {};
-
-    @override
-    void initState() {
-        super.initState();
-        _currentIndex = widget.initialIndex;
-    }
-
-    Future<Uint8List?> _loadPreview(int index) {
-        if (_imageFutures.containsKey(index)) {
-            return _imageFutures[index]!;
-        }
-        final asset = widget.assets[index];
-        final future = widget.repository.loadPreview(
-            asset.id,
-            maxPixelSize: 2000,
-        );
-        _imageFutures[index] = future;
-        return future;
-    }
-
-    @override
-    Widget build(BuildContext context) => Scaffold(
-        backgroundColor: Colors.black,
-        body: SafeArea(
-            child: Stack(
-                children: [
-                    PageView.builder(
-                        itemCount: widget.assets.length,
-                        onPageChanged: (index) {
-                            setState(() => _currentIndex = index);
-                        },
-                        itemBuilder: (context, index) {
-                            return GestureDetector(
-                                onTap: () => Navigator.of(context).pop(),
-                                child: InteractiveViewer(
-                                    boundaryMargin:
-                                        const EdgeInsets.all(20),
-                                    minScale: 0.5,
-                                    maxScale: 5.0,
-                                    child: FutureBuilder<Uint8List?>(
-                                        future: _loadPreview(index),
-                                        builder: (context, snapshot) {
-                                            switch (snapshot.connectionState) {
-                                            case ConnectionState.waiting:
-                                                return const Center(
-                                                    child: CircularProgressIndicator(
-                                                        color: Colors.white),
-                                                );
-                                            case ConnectionState.done:
-                                              if (snapshot.hasError) {
-                                                return _ErrorView(
-                                                    onRetry: () {
-                                                      setState(() {
-                                                        _imageFutures.remove(index);
-                                                      });
-                                                    },
-                                                  );
-                                              }
-                                              final bytes = snapshot.data;
-                                              if (bytes == null) {
-                                                return _ErrorView(
-                                                    onRetry: () {
-                                                      setState(() {
-                                                        _imageFutures.remove(index);
-                                                      });
-                                                    },
-                                                  );
-                                              }
-                                              return Image.memory(
-                                                  bytes,
-                                                  fit: BoxFit.contain,
-                                              );
-                                            default:
-                                              return const SizedBox.shrink();
-                                            }
-                                        },
-                                    ),
-                                ),
-                            );
-                        },
-                    ),
-                    Positioned(
-                        top: 8,
-                        left: 12,
-                        child: IconButton(
-                            icon: const Icon(Icons.close,
-                                color: Colors.white, size: 28),
-                            onPressed: () =>
-                                Navigator.of(context).pop(),
-                        ),
-                    ),
-                    Positioned(
-                        bottom: 16,
-                        left: 12,
-                        right: 12,
-                        child: Text(
-                            '${_currentIndex + 1} / ${widget.assets.length}',
-                            style: const TextStyle(
-                                color: Colors.white70,
-                                fontSize: 14,
-                            ),
-                            textAlign: TextAlign.center,
-                        ),
-                    ),
-                ],
-            ),
-        ),
-    );
-}
-
-class _ErrorView extends StatelessWidget {
-    const _ErrorView({required this.onRetry});
-    final VoidCallback onRetry;
-
-    @override
-    Widget build(BuildContext context) => Center(
-        child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-                const Icon(Icons.broken_image, color: Colors.white54, size: 48),
-                const SizedBox(height: 12),
-                const Text(
-                    '无法加载图片',
-                    style: TextStyle(color: Colors.white70, fontSize: 16),
-                ),
-                const SizedBox(height: 16),
-                FilledButton(
-                    onPressed: onRetry,
-                    child: const Text('重试'),
-                ),
-            ],
-        ),
-    );
-}
-
-class _MemoryLab extends StatefulWidget {
-  const _MemoryLab({
-    required this.stats,
-    required this.rawCandidates,
-    required this.rankedCandidates,
-    required this.feedCandidates,
-    required this.memoryContext,
-    required this.ranker,
-    required this.sensitivityGuard,
-    required this.enabledRules,
-    required this.config,
-    required this.onRulesChanged,
-    required this.onConfigChanged,
-    required this.onRescan,
-    required this.onSaveEvaluation,
-  });
-
-  final MediaIndexStats? stats;
-  final List<MemoryCandidate> rawCandidates;
-  final List<MemoryCandidate> rankedCandidates;
-  final List<MemoryCandidate> feedCandidates;
-  final MemoryContext memoryContext;
-  final MemoryRanker ranker;
-  final MemorySensitivityGuard sensitivityGuard;
-  final Set<String> enabledRules;
-  final MemoryIntelligenceConfig config;
-  final ValueChanged<Set<String>> onRulesChanged;
-  final ValueChanged<MemoryIntelligenceConfig> onConfigChanged;
-  final Future<void> Function() onRescan;
-  final Future<void> Function(MemoryCandidate candidate, List<String> labels)
-  onSaveEvaluation;
-
-  @override
-  State<_MemoryLab> createState() => _MemoryLabState();
-}
-
-class _MemoryLabState extends State<_MemoryLab> {
-  MemoryCandidate? compareA;
-  MemoryCandidate? compareB;
-
-  @override
-  Widget build(BuildContext context) {
-    final s = widget.stats;
-    return Scaffold(
-      appBar: AppBar(title: const Text('Memory Lab V0.2')),
-      body: ListView(
-        padding: const EdgeInsets.all(AppSpacing.medium),
-        children: [
-          Text('Index', style: Theme.of(context).textTheme.titleLarge),
-          Text(
-            s == null
-                ? 'No index stats yet'
-                : '${s.total} indexed · ${s.photos} photos · ${s.videos} videos · ${s.placeClusterCount} place clusters',
-          ),
-          const SizedBox(height: AppSpacing.medium),
-          Text('Rule ON / OFF', style: Theme.of(context).textTheme.titleLarge),
-          ..._allRuleNames.map(_ruleSwitch),
-          const Divider(),
-          Text(
-            'Rule Parameters',
-            style: Theme.of(context).textTheme.titleLarge,
-          ),
-          _samePlaceYearSlider(),
-          _travelAssetsSlider(),
-          FilledButton(
-            onPressed: widget.onRescan,
-            child: const Text('Re-run discovery'),
-          ),
-          const Divider(),
-          Text(
-            'Raw ${widget.rawCandidates.length} · Ranked ${widget.rankedCandidates.length} · Feed ${widget.feedCandidates.length}',
-          ),
-          const SizedBox(height: AppSpacing.small),
-          Text(
-            'Top 10 Candidate Browser',
-            style: Theme.of(context).textTheme.titleLarge,
-          ),
-          ...widget.feedCandidates.take(10).map(_candidateCard),
-          const Divider(),
-          Text(
-            'Candidate Compare',
-            style: Theme.of(context).textTheme.titleLarge,
-          ),
-          _comparePane(),
-        ],
-      ),
-    );
-  }
-
-  Widget _ruleSwitch(String name) => SwitchListTile(
-    title: Text(name),
-    value: widget.enabledRules.contains(name),
-    onChanged: (enabled) {
-      final next = {...widget.enabledRules};
-      enabled ? next.add(name) : next.remove(name);
-      widget.onRulesChanged(next);
-      setState(() {});
-    },
-  );
-
-  Widget _samePlaceYearSlider() {
-    final current = widget.config.samePlaceAcrossYears.minimumYearCount;
-    return ListTile(
-      title: Text('SamePlaceAcrossYears minimum years: $current'),
-      subtitle: Slider(
-        value: current.toDouble(),
-        min: 2,
-        max: 8,
-        divisions: 6,
-        onChanged: (value) {
-          widget.onConfigChanged(
-            MemoryIntelligenceConfig(
-              samePlaceAcrossYears: SamePlaceAcrossYearsRuleConfig(
-                minimumYearCount: value.round(),
-                minimumVisitCount:
-                    widget.config.samePlaceAcrossYears.minimumVisitCount,
-                locationPrecision:
-                    widget.config.samePlaceAcrossYears.locationPrecision,
-                sessionGap: widget.config.samePlaceAcrossYears.sessionGap,
-              ),
-              firstMemory: widget.config.firstMemory,
-              travelStory: widget.config.travelStory,
-              personTimeline: widget.config.personTimeline,
-              annualTogether: widget.config.annualTogether,
-              longTermEvolution: widget.config.longTermEvolution,
-              rankingWeights: widget.config.rankingWeights,
-            ),
-          );
-          setState(() {});
-        },
-      ),
-    );
-  }
-
-  Widget _travelAssetsSlider() {
-    final current = widget.config.travelStory.minimumAssets;
-    return ListTile(
-      title: Text('TravelStory minimum media count: $current'),
-      subtitle: Slider(
-        value: current.toDouble(),
-        min: 6,
-        max: 40,
-        divisions: 17,
-        onChanged: (value) {
-          widget.onConfigChanged(
-            MemoryIntelligenceConfig(
-              samePlaceAcrossYears: widget.config.samePlaceAcrossYears,
-              firstMemory: widget.config.firstMemory,
-              travelStory: TravelStoryRuleConfig(
-                minimumAssets: value.round(),
-                minimumDays: widget.config.travelStory.minimumDays,
-                minimumPlaceCount: widget.config.travelStory.minimumPlaceCount,
-                maxGap: widget.config.travelStory.maxGap,
-                locationPrecision: widget.config.travelStory.locationPrecision,
-              ),
-              personTimeline: widget.config.personTimeline,
-              annualTogether: widget.config.annualTogether,
-              longTermEvolution: widget.config.longTermEvolution,
-              rankingWeights: widget.config.rankingWeights,
-            ),
-          );
-          setState(() {});
-        },
-      ),
-    );
-  }
-
-  Widget _candidateCard(MemoryCandidate candidate) {
-    final breakdown = widget.ranker.explain(candidate, widget.memoryContext);
-    final sensitivity = widget.sensitivityGuard.assess(candidate);
-    return Card(
-      margin: const EdgeInsets.only(bottom: AppSpacing.medium),
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.medium),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              candidate.type.name,
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            Text(candidate.safeTitleTemplate ?? candidate.id),
-            Text(
-              '${candidate.mediaIds.length} media · score ${breakdown.finalScore.toStringAsFixed(1)}',
-            ),
-            if (sensitivity.flags.isNotEmpty)
-              Text('Sensitivity flags: ${sensitivity.flags.join(', ')}'),
-            Wrap(
-              spacing: AppSpacing.small,
-              children: [
-                OutlinedButton(
-                  onPressed: () => setState(() => compareA = candidate),
-                  child: const Text('Set A'),
-                ),
-                OutlinedButton(
-                  onPressed: () => setState(() => compareB = candidate),
-                  child: const Text('Set B'),
-                ),
-              ],
-            ),
-            Wrap(
-              spacing: AppSpacing.small,
-              children: [
-                _feedback(candidate, '有意义'),
-                _feedback(candidate, '有惊喜'),
-                _feedback(candidate, '一般'),
-                _feedback(candidate, '不准确'),
-                _feedback(candidate, '不希望看到'),
-              ],
-            ),
-            ExpansionTile(
-              title: const Text('Score Breakdown / Reasons'),
-              children: [
-                ...breakdown.factors.entries.map(
-                  (entry) => ListTile(
-                    dense: true,
-                    title: Text(entry.key),
-                    trailing: Text(entry.value.toStringAsFixed(1)),
-                  ),
-                ),
-                ...candidate.reasons.map(
-                  (reason) => ListTile(dense: true, title: Text(reason)),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _feedback(MemoryCandidate candidate, String label) => TextButton(
-    onPressed: () => widget.onSaveEvaluation(candidate, [label]),
-    child: Text(label),
-  );
-
-  Widget _comparePane() => Row(
-    crossAxisAlignment: CrossAxisAlignment.start,
+  Widget build(BuildContext context) => Wrap(
+    spacing: AppSpacing.xSmall,
+    runSpacing: AppSpacing.xSmall,
     children: [
-      Expanded(child: _compareItem('A', compareA)),
-      const SizedBox(width: AppSpacing.medium),
-      Expanded(child: _compareItem('B', compareB)),
+      _button('👍 值得回看', '值得回看'),
+      _button('✨ 没想到', '没想到'),
+      _button('😐 一般', '一般'),
+      _button('❌ 不准确', '不准确'),
+      _button('🙈 不想看到', '不想看到'),
     ],
   );
 
-  Widget _compareItem(String label, MemoryCandidate? candidate) {
-    if (candidate == null) return Text('$label: not selected');
-    final breakdown = widget.ranker.explain(candidate, widget.memoryContext);
-    final sensitivity = widget.sensitivityGuard.assess(candidate);
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.medium),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('$label · ${candidate.type.name}'),
-            Text('Score ${breakdown.finalScore.toStringAsFixed(1)}'),
-            Text(
-              'Risk ${sensitivity.flags.isEmpty ? 'none' : sensitivity.flags.join(',')}',
-            ),
-            ...candidate.reasons.take(3).map(Text.new),
-          ],
-        ),
-      ),
-    );
-  }
+  Widget _button(String text, String label) =>
+      OutlinedButton(onPressed: () => onFeedback([label]), child: Text(text));
 }
-
-const _allRuleNames = [
-  'DateClusterRule',
-  'SamePlaceRule',
-  'YearRecapRule',
-  'SamePlaceAcrossYearsRule',
-  'FirstMemoryRule',
-  'TravelStoryRule',
-  'PersonTimelineRule',
-  'AnnualTogetherRule',
-  'LongTermEvolutionRule',
-];
 
 String _dateRange(MemoryCandidate c) {
   final start = c.period.start;
