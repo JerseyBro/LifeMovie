@@ -213,7 +213,7 @@ class _RecordingMediaRepository implements MediaRepository {
     String? requestId,
   }) async {
     thumbnailSizes.add(size);
-    return null;
+    return _transparentPixel;
   }
 
   @override
