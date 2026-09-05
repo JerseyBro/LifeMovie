@@ -30,9 +30,8 @@ class _FullscreenPhotoViewerPageState extends State<FullscreenPhotoViewerPage> {
       TransformationController();
   bool _chromeVisible = true;
   double _scale = 1;
+  double _dragDistance = 0;
   TapDownDetails? _doubleTapDetails;
-  Offset? _tapDownPosition;
-  DateTime? _tapDownAt;
 
   bool get _isZoomed => _scale > 1.01;
 
@@ -77,24 +76,6 @@ class _FullscreenPhotoViewerPageState extends State<FullscreenPhotoViewerPage> {
     setState(() => _chromeVisible = !_chromeVisible);
   }
 
-  void _handlePointerDown(PointerDownEvent event) {
-    _tapDownPosition = event.position;
-    _tapDownAt = DateTime.now();
-  }
-
-  void _handlePointerUp(PointerUpEvent event) {
-    final start = _tapDownPosition;
-    final startedAt = _tapDownAt;
-    _tapDownPosition = null;
-    _tapDownAt = null;
-    if (_isZoomed || start == null || startedAt == null) return;
-    final moved = (event.position - start).distance;
-    final elapsed = DateTime.now().difference(startedAt);
-    if (moved < 12 && elapsed < const Duration(milliseconds: 350)) {
-      _toggleChrome();
-    }
-  }
-
   void _handleDoubleTap() {
     final details = _doubleTapDetails;
     if (_isZoomed) {
@@ -107,10 +88,21 @@ class _FullscreenPhotoViewerPageState extends State<FullscreenPhotoViewerPage> {
       ..scaleByDouble(2.4, 2.4, 1, 1);
   }
 
+  void _handleVerticalDragStart(DragStartDetails details) {
+    _dragDistance = 0;
+  }
+
+  void _handleVerticalDragUpdate(DragUpdateDetails details) {
+    _dragDistance += (details.delta.dy).abs();
+  }
+
   void _handleVerticalDragEnd(DragEndDetails details) {
     if (_isZoomed) return;
     final velocity = details.primaryVelocity ?? 0;
-    if (velocity > 700) Navigator.of(context).pop();
+    if (velocity > 500 || _dragDistance > 100) {
+      Navigator.of(context).pop();
+    }
+    _dragDistance = 0;
   }
 
   void _onPageChanged(int index) {
@@ -133,6 +125,8 @@ class _FullscreenPhotoViewerPageState extends State<FullscreenPhotoViewerPage> {
           children: [
             GestureDetector(
               behavior: HitTestBehavior.opaque,
+              onVerticalDragStart: _handleVerticalDragStart,
+              onVerticalDragUpdate: _handleVerticalDragUpdate,
               onVerticalDragEnd: _handleVerticalDragEnd,
               child: PageView.builder(
                 controller: _pageController,
@@ -142,48 +136,44 @@ class _FullscreenPhotoViewerPageState extends State<FullscreenPhotoViewerPage> {
                 itemCount: widget.assets.length,
                 onPageChanged: _onPageChanged,
                 itemBuilder: (context, index) {
-                  return Listener(
+                  return GestureDetector(
                     behavior: HitTestBehavior.opaque,
-                    onPointerDown: _handlePointerDown,
-                    onPointerUp: _handlePointerUp,
-                    child: GestureDetector(
-                      behavior: HitTestBehavior.opaque,
-                      onDoubleTapDown: (details) => _doubleTapDetails = details,
-                      onDoubleTap: _handleDoubleTap,
-                      child: Center(
-                        child: InteractiveViewer(
-                          transformationController: _transformController,
-                          minScale: 1,
-                          maxScale: 5,
-                          boundaryMargin: const EdgeInsets.all(96),
-                          child: FutureBuilder<Uint8List?>(
-                            future: _loadPreview(index),
-                            builder: (context, snapshot) {
-                              if (snapshot.connectionState !=
-                                  ConnectionState.done) {
-                                return const Center(
-                                  child: CircularProgressIndicator(
-                                    color: Colors.white,
-                                  ),
-                                );
-                              }
-                              final bytes = snapshot.data;
-                              if (snapshot.hasError || bytes == null) {
-                                return _ViewerError(
-                                  onRetry: () {
-                                    setState(() {
-                                      _imageFutures.remove(index);
-                                    });
-                                  },
-                                );
-                              }
-                              return Image.memory(
-                                bytes,
-                                fit: BoxFit.contain,
-                                filterQuality: FilterQuality.high,
+                    onTap: _toggleChrome,
+                    onDoubleTapDown: (details) => _doubleTapDetails = details,
+                    onDoubleTap: _handleDoubleTap,
+                    child: Center(
+                      child: InteractiveViewer(
+                        transformationController: _transformController,
+                        minScale: 1,
+                        maxScale: 5,
+                        boundaryMargin: const EdgeInsets.all(96),
+                        child: FutureBuilder<Uint8List?>(
+                          future: _loadPreview(index),
+                          builder: (context, snapshot) {
+                            if (snapshot.connectionState !=
+                                ConnectionState.done) {
+                              return const Center(
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                ),
                               );
-                            },
-                          ),
+                            }
+                            final bytes = snapshot.data;
+                            if (snapshot.hasError || bytes == null) {
+                              return _ViewerError(
+                                onRetry: () {
+                                  setState(() {
+                                    _imageFutures.remove(index);
+                                  });
+                                },
+                              );
+                            }
+                            return Image.memory(
+                              bytes,
+                              fit: BoxFit.contain,
+                              filterQuality: FilterQuality.high,
+                            );
+                          },
                         ),
                       ),
                     ),

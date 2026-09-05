@@ -51,11 +51,62 @@ void main() {
 
     expect(find.byIcon(Icons.close), findsOneWidget);
 
+    // onTap shares the recognizer with onDoubleTap, so it fires only after
+    // the double-tap timeout. pumpAndSettle alone never advances that timer.
     await tester.tap(find.byType(PageView));
-    await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 400));
 
     expect(find.byType(FullscreenPhotoViewerPage), findsOneWidget);
     expect(find.byIcon(Icons.close), findsNothing);
+  });
+
+  testWidgets('viewer downward drag dismisses when not zoomed', (tester) async {
+    final repository = _RecordingMediaRepository();
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: FullscreenPhotoViewerPage(
+          repository: repository,
+          assets: _assets(2),
+          initialIndex: 0,
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.byType(FullscreenPhotoViewerPage), findsOneWidget);
+
+    await tester.fling(find.byType(PageView), const Offset(0, 400), 900);
+    await tester.pumpAndSettle();
+
+    expect(find.byType(FullscreenPhotoViewerPage), findsNothing);
+  });
+
+  testWidgets('viewer horizontal swipe blocked while zoomed', (tester) async {
+    final repository = _RecordingMediaRepository();
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: FullscreenPhotoViewerPage(
+          repository: repository,
+          assets: _assets(2),
+          initialIndex: 0,
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text('1 / 2'), findsOneWidget);
+
+    await tester.tap(find.byType(PageView));
+    await tester.pump(const Duration(milliseconds: 50));
+    await tester.tap(find.byType(PageView));
+    await tester.pumpAndSettle();
+
+    await tester.drag(find.byType(PageView), const Offset(-500, 0));
+    await tester.pumpAndSettle();
+
+    expect(find.text('1 / 2'), findsOneWidget);
   });
 
   testWidgets(
@@ -95,6 +146,17 @@ void main() {
     },
   );
 }
+
+/// Minimal 1x1 transparent PNG so image widgets render real pixels.
+final Uint8List _transparentPixel = Uint8List.fromList([
+  0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x0D,
+  0x49, 0x48, 0x44, 0x52, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,
+  0x08, 0x06, 0x00, 0x00, 0x00, 0x1F, 0x15, 0xC4, 0x89, 0x00, 0x00, 0x00,
+  0x0D, 0x49, 0x44, 0x41, 0x54, 0x78, 0x9C, 0x63, 0x60, 0x18, 0x05, 0xA3,
+  0x60, 0x14, 0x8C, 0x02, 0x00, 0x00, 0x0D, 0x00, 0x01, 0xE2, 0xB8, 0x1E,
+  0xE6, 0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4E, 0x44, 0xAE, 0x42, 0x60,
+  0x82,
+]);
 
 List<MediaAsset> _assets(int count) => List.generate(
   count,
@@ -141,7 +203,7 @@ class _RecordingMediaRepository implements MediaRepository {
     String? requestId,
   }) async {
     previewSizes.add(maxPixelSize ?? 0);
-    return null;
+    return _transparentPixel;
   }
 
   @override
