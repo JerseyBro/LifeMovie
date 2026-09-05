@@ -47,14 +47,28 @@ Manual device validation and real-user validation remain pending unless explicit
   - ❌ 不准确
   - 🙈 不想看到
 - Feedback continues through `MemoryEvaluation.forCandidate`, preserving opaque local candidate ids.
+- Memory Lab adds an internal First WOW readout (`loadAll` aggregation):
+  Meaningful / Surprising / Wrong / Unwanted / Meh counts plus rates and
+  the internal hypothesis (meaningful Top5 >= 3, WOW >= 40%,
+  wrong/unwanted < 20%). Labels stay local; nothing feeds ranking.
+
+### Discovery feed editorial polish
+
+- Feed cards carry a light type eyebrow (人物 / 地点 / 旅途 / 年度回顾 /
+  初见 / 每年相聚 / 成长变化 / 聚会时光) with a small muted icon.
+- No per-type card components, no large colored tags, no AI gradient.
+- Rule names and scores stay in Memory Lab only.
 
 ### Presentation split
 
-- `apps/memory_app/lib/main.dart` reduced to 877 lines.
+- `apps/memory_app/lib/main.dart` reduced from 877 to 621 lines.
 - Extracted:
   - `apps/memory_app/lib/screens/photo_viewer_page.dart`
   - `apps/memory_app/lib/screens/memory_lab_page.dart`
+  - `apps/memory_app/lib/screens/memory_detail_page.dart`
   - `apps/memory_app/lib/widgets/media_preview.dart`
+  - `apps/memory_app/lib/widgets/memory_card.dart`
+- Detail hero ratio changed from 1:1 to 4:3 to reduce subject cropping.
 
 No new state management framework or Clean Architecture rewrite was introduced.
 
@@ -66,6 +80,8 @@ No new state management framework or Clean Architecture rewrite was introduced.
 - Added `apps/memory_app/lib/screens/memory_lab_page.dart`: extracted debug lab.
 - Added `apps/memory_app/lib/widgets/media_preview.dart`: thumbnail/preview loading widgets and size constants.
 - Added `apps/memory_app/test/photo_viewer_page_test.dart`: viewer and preview-size contract tests.
+- Added `apps/memory_app/test/memory_browsing_test.dart`: card type eyebrow
+  without rule names, detail hero medium-preview request.
 - Modified `apps/memory_app/test/copy_mapper_test.dart`: removed deprecated safe-template dependency.
 - Modified `apps/memory_app/test/vertical_slice_test.dart`: validates CopyMapper output instead of engine safe template.
 - Modified `packages/memory_engine/lib/memory_engine.dart` and legacy tests: keep public deprecation warnings for external callers while suppressing internal compatibility-field noise.
@@ -111,7 +127,7 @@ These are synthetic metadata tests, not real-device Photos timing.
   - `apps/memory_app`: pass, no issues.
 - `flutter test`:
   - `packages/media_library`: pass, 11 tests.
-  - `apps/memory_app`: pass, 10 tests.
+  - `apps/memory_app`: pass, 12 tests.
   - `packages/design_system`: no Flutter test files.
 - `flutter build ios --debug --no-codesign` in `apps/memory_app`: pass, built `build/ios/iphoneos/Runner.app`.
 
