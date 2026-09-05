@@ -8,10 +8,9 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:media_library/media_library.dart';
 import 'package:memory_app/l10n/app_localizations.dart';
-import 'package:memory_app/presentation/memory_candidate_copy_mapper.dart';
+import 'package:memory_app/screens/memory_detail_page.dart';
 import 'package:memory_app/screens/memory_lab_page.dart';
-import 'package:memory_app/screens/photo_viewer_page.dart';
-import 'package:memory_app/widgets/media_preview.dart';
+import 'package:memory_app/widgets/memory_card.dart';
 import 'package:memory_domain/memory_domain.dart';
 import 'package:memory_engine/memory_engine.dart';
 import 'package:path_provider/path_provider.dart';
@@ -383,6 +382,7 @@ class _MemoryHomePageState extends State<MemoryHomePage> {
                         setState(() => intelligenceConfig = value),
                     onRescan: _scan,
                     onSaveEvaluation: _saveEvaluation,
+                    evaluationStore: evaluationStore,
                   ),
                 ),
               ),
@@ -422,7 +422,7 @@ class _MemoryHomePageState extends State<MemoryHomePage> {
                   .map(
                     (candidate) => Padding(
                       padding: const EdgeInsets.only(bottom: AppSpacing.large),
-                      child: _MemoryCard(
+                      child: MemoryCard(
                         candidate: candidate,
                         repository: repository,
                         thumbnailAssetId: _thumbnailId(candidate),
@@ -446,7 +446,7 @@ class _MemoryHomePageState extends State<MemoryHomePage> {
                               : candidate.representativeMediaIds;
                           Navigator.of(context).push(
                             CupertinoPageRoute(
-                              builder: (_) => _Detail(
+                              builder: (_) => MemoryDetailPage(
                                 candidate: candidate,
                                 allAssets: candidate.mediaIds
                                     .map((id) => assetsById[id])
@@ -616,262 +616,4 @@ class _EmptyFeed extends StatelessWidget {
       ),
     );
   }
-}
-
-class _MemoryCard extends StatelessWidget {
-  const _MemoryCard({
-    required this.candidate,
-    required this.repository,
-    required this.thumbnailAssetId,
-    required this.onTap,
-    this.onFeedback,
-  });
-
-  final MemoryCandidate candidate;
-  final MediaRepository repository;
-  final String? thumbnailAssetId;
-  final VoidCallback onTap;
-  final Future<void> Function(List<String> labels)? onFeedback;
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
-    final copy = const MemoryCandidateCopyMapper().map(candidate, l10n);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        LifeStoryCard(
-          hero: MediaPreviewTile(
-            key: ValueKey(thumbnailAssetId),
-            repository: repository,
-            assetId: thumbnailAssetId,
-            size: feedPreviewSize,
-          ),
-          title: copy.title,
-          metadata: copy.subtitle,
-          cta: _isYearBased(candidate) ? l10n.cardCtaYears : l10n.cardCtaMemory,
-          onTap: onTap,
-        ),
-        if (onFeedback != null) ...[
-          const SizedBox(height: AppSpacing.small),
-          _FirstWowFeedbackBar(onFeedback: onFeedback!),
-        ],
-      ],
-    );
-  }
-
-  bool _isYearBased(MemoryCandidate c) =>
-      c.type == MemoryCandidateType.samePlaceAcrossYears ||
-      c.type == MemoryCandidateType.personTimeline ||
-      c.type == MemoryCandidateType.longTermEvolution ||
-      c.type == MemoryCandidateType.annualTogether;
-}
-
-class _Detail extends StatelessWidget {
-  const _Detail({
-    required this.candidate,
-    required this.allAssets,
-    required this.representativeAssets,
-    required this.onBack,
-    required this.ai,
-    required this.repository,
-    required this.ranker,
-    required this.contextAssets,
-  });
-
-  final MemoryCandidate candidate;
-  final List<MediaAsset> allAssets;
-  final List<MediaAsset> representativeAssets;
-  final VoidCallback onBack;
-  final AiService ai;
-  final MediaRepository repository;
-  final MemoryRanker ranker;
-  final List<MediaAsset> contextAssets;
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
-    final photos = allAssets
-        .where(
-          (a) => a.type == MediaType.image || a.type == MediaType.livePhoto,
-        )
-        .length;
-    final videos = allAssets.where((a) => a.type == MediaType.video).length;
-    final hasLocation = allAssets.any((a) => a.location != null);
-    final breakdown = ranker.explain(
-      candidate,
-      MemoryContext(assets: contextAssets),
-    );
-    final byYear = _assetsByYear(allAssets);
-
-    return Scaffold(
-      appBar: AppBar(
-        leading: BackButton(onPressed: onBack),
-        title: Text(l10n.detailTitle),
-      ),
-      body: ListView(
-        padding: const EdgeInsets.all(AppSpacing.large),
-        children: [
-          if (representativeAssets.isNotEmpty)
-            GestureDetector(
-              onTap: () {
-                Navigator.of(context).push(
-                  CupertinoPageRoute(
-                    builder: (_) => FullscreenPhotoViewerPage(
-                      repository: repository,
-                      assets: representativeAssets,
-                      initialIndex: 0,
-                    ),
-                  ),
-                );
-              },
-              child: AspectRatio(
-                aspectRatio: 1,
-                child: MediaPreview(
-                  repository: repository,
-                  assetId: representativeAssets.first.id,
-                  size: detailPreviewSize,
-                  usePreview: true,
-                ),
-              ),
-            ),
-          const SizedBox(height: AppSpacing.large),
-          Text(
-            const MemoryCandidateCopyMapper().map(candidate, l10n).title,
-            style: Theme.of(context).textTheme.displaySmall,
-          ),
-          const SizedBox(height: AppSpacing.small),
-          Text(
-            _dateRange(candidate),
-            style: Theme.of(context).textTheme.bodyMedium,
-          ),
-          const SizedBox(height: AppSpacing.small),
-          Text('${l10n.detailPhotos(photos)} · ${l10n.detailVideos(videos)}'),
-          if (hasLocation) Text(l10n.detailLocationHint),
-          const SizedBox(height: AppSpacing.large),
-          _ThumbnailGrid(
-            repository: repository,
-            assets: representativeAssets.take(12).toList(),
-          ),
-          const SizedBox(height: AppSpacing.large),
-          Text(
-            l10n.detailTimeline,
-            style: Theme.of(context).textTheme.titleLarge,
-          ),
-          ...byYear.entries.map(
-            (entry) => Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                TimelineYearLabel(year: entry.key),
-                _ThumbnailGrid(
-                  repository: repository,
-                  assets: entry.value.take(6).toList(),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: AppSpacing.large),
-          FutureBuilder<String>(
-            future: ai.generateMemorySummary(memoryId: candidate.id),
-            builder: (context, snapshot) => Text(
-              snapshot.data ?? l10n.detailAiPlaceholder,
-              style: Theme.of(context).textTheme.bodyLarge,
-            ),
-          ),
-          if (kDebugMode) ...[
-            const Divider(height: AppSpacing.xLarge),
-            Text(
-              'Debug: ${candidate.type.name}',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            ...candidate.reasons.map(
-              (reason) => ListTile(dense: true, title: Text(reason)),
-            ),
-            Text('Score ${breakdown.finalScore.toStringAsFixed(1)}'),
-            ...breakdown.factors.entries.map(
-              (entry) => ListTile(
-                dense: true,
-                title: Text(entry.key),
-                trailing: Text(entry.value.toStringAsFixed(1)),
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-class _ThumbnailGrid extends StatelessWidget {
-  const _ThumbnailGrid({required this.repository, required this.assets});
-
-  final MediaRepository repository;
-  final List<MediaAsset> assets;
-
-  @override
-  Widget build(BuildContext context) => GridView.builder(
-    shrinkWrap: true,
-    physics: const NeverScrollableScrollPhysics(),
-    itemCount: assets.length,
-    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-      crossAxisCount: 3,
-      mainAxisSpacing: AppSpacing.small,
-      crossAxisSpacing: AppSpacing.small,
-    ),
-    itemBuilder: (context, index) => MediaPreviewTile(
-      key: ValueKey(assets[index].id),
-      repository: repository,
-      assetId: assets[index].id,
-      size: gridPreviewSize,
-      onTap: () => Navigator.of(context).push(
-        CupertinoPageRoute(
-          builder: (_) => FullscreenPhotoViewerPage(
-            repository: repository,
-            assets: assets,
-            initialIndex: index,
-          ),
-        ),
-      ),
-    ),
-  );
-}
-
-class _FirstWowFeedbackBar extends StatelessWidget {
-  const _FirstWowFeedbackBar({required this.onFeedback});
-
-  final Future<void> Function(List<String> labels) onFeedback;
-
-  @override
-  Widget build(BuildContext context) => Wrap(
-    spacing: AppSpacing.xSmall,
-    runSpacing: AppSpacing.xSmall,
-    children: [
-      _button('👍 值得回看', '值得回看'),
-      _button('✨ 没想到', '没想到'),
-      _button('😐 一般', '一般'),
-      _button('❌ 不准确', '不准确'),
-      _button('🙈 不想看到', '不想看到'),
-    ],
-  );
-
-  Widget _button(String text, String label) =>
-      OutlinedButton(onPressed: () => onFeedback([label]), child: Text(text));
-}
-
-String _dateRange(MemoryCandidate c) {
-  final start = c.period.start;
-  final end = c.period.end;
-  return '${start.year}.${start.month}.${start.day} — ${end.year}.${end.month}.${end.day}';
-}
-
-Map<int, List<MediaAsset>> _assetsByYear(List<MediaAsset> assets) {
-  final result = <int, List<MediaAsset>>{};
-  for (final asset in assets) {
-    final year = asset.creationDate?.year;
-    if (year == null) continue;
-    (result[year] ??= []).add(asset);
-  }
-  return Map.fromEntries(
-    result.entries.toList()..sort((a, b) => a.key.compareTo(b.key)),
-  );
 }
