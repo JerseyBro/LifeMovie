@@ -22,6 +22,7 @@ class MemoryLabPage extends StatefulWidget {
     required this.onConfigChanged,
     required this.onRescan,
     required this.onSaveEvaluation,
+    this.evaluationStore,
   });
 
   final MediaIndexStats? stats;
@@ -39,6 +40,9 @@ class MemoryLabPage extends StatefulWidget {
   final Future<void> Function(MemoryCandidate candidate, List<String> labels)
   onSaveEvaluation;
 
+  /// Local-only store backing First WOW metrics. Null hides metrics section.
+  final MemoryEvaluationStore? evaluationStore;
+
   @override
   State<MemoryLabPage> createState() => _MemoryLabPageState();
 }
@@ -46,6 +50,26 @@ class MemoryLabPage extends StatefulWidget {
 class _MemoryLabPageState extends State<MemoryLabPage> {
   MemoryCandidate? compareA;
   MemoryCandidate? compareB;
+  Future<List<MemoryEvaluation>>? _evaluations;
+
+  @override
+  void initState() {
+    super.initState();
+    _refreshEvaluations();
+  }
+
+  @override
+  void didUpdateWidget(MemoryLabPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.evaluationStore != widget.evaluationStore) {
+      _refreshEvaluations();
+    }
+  }
+
+  void _refreshEvaluations() {
+    final store = widget.evaluationStore;
+    _evaluations = store?.loadAll();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -80,6 +104,7 @@ class _MemoryLabPageState extends State<MemoryLabPage> {
             'Raw ${widget.rawCandidates.length} · Ranked ${widget.rankedCandidates.length} · Feed ${widget.feedCandidates.length}',
           ),
           const SizedBox(height: AppSpacing.small),
+          if (widget.evaluationStore != null) _wowMetrics(),
           Text(
             'Top 10 Candidate Browser',
             style: Theme.of(context).textTheme.titleLarge,
@@ -240,9 +265,75 @@ class _MemoryLabPageState extends State<MemoryLabPage> {
   }
 
   Widget _feedback(MemoryCandidate candidate, String label) => TextButton(
-    onPressed: () => widget.onSaveEvaluation(candidate, [label]),
+    onPressed: () async {
+      await widget.onSaveEvaluation(candidate, [label]);
+      _refreshEvaluations();
+      if (mounted) setState(() {});
+    },
     child: Text(label),
   );
+
+  /// Internal First WOW hypothesis readout. Local labels only, no ranking use.
+  Widget _wowMetrics() {
+    final pending = _evaluations;
+    if (pending == null) return const SizedBox.shrink();
+    return FutureBuilder<List<MemoryEvaluation>>(
+      future: pending,
+      builder: (context, snapshot) {
+        final items = snapshot.data ?? const <MemoryEvaluation>[];
+        var meaningful = 0;
+        var surprising = 0;
+        var wrong = 0;
+        var unwanted = 0;
+        var meh = 0;
+        for (final item in items) {
+          final labels = item.labels;
+          if (labels.any((e) => e == '值得回看' || e == '有意义')) {
+            meaningful += 1;
+          }
+          if (labels.any((e) => e == '没想到' || e == '有惊喜')) {
+            surprising += 1;
+          }
+          if (labels.any((e) => e == '不准确')) wrong += 1;
+          if (labels.any((e) => e == '不想看到' || e == '不希望看到' || e == '太私人')) {
+            unwanted += 1;
+          }
+          if (labels.any((e) => e == '一般')) meh += 1;
+        }
+        final total = items.length;
+        String rate(int count) =>
+            total == 0 ? '—' : '${(count * 100 / total).round()}%';
+        return Card(
+          margin: const EdgeInsets.only(bottom: AppSpacing.medium),
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.medium),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'First WOW · internal ($total evaluated)',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                Text(
+                  'Meaningful $meaningful (${rate(meaningful)}) · '
+                  'Surprising $surprising (${rate(surprising)})',
+                ),
+                Text(
+                  'Wrong $wrong (${rate(wrong)}) · '
+                  'Unwanted $unwanted (${rate(unwanted)}) · '
+                  'Meh $meh (${rate(meh)})',
+                ),
+                const Text(
+                  'Hypothesis: meaningful Top5 >= 3, WOW >= 40%, '
+                  'wrong/unwanted < 20%.',
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
 
   Widget _comparePane() => Row(
     crossAxisAlignment: CrossAxisAlignment.start,
