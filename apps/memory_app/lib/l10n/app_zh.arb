@@ -190,5 +190,67 @@
   },
   "longTermEvolutionTitle": "这些照片记录了一段时间的变化。",
   "annualTogetherTitle": "每年差不多这个时候，都有一组相似的记录。",
-  "samePlaceAcrossYearsTitle": "你已经连续几年来到这里。"
+  "samePlaceAcrossYearsTitle": "你已经连续几年来到这里。",
+  "navDiscover": "发现",
+  "navTimeline": "时光",
+  "navSearch": "搜索",
+  "discoverForYou": "今天，我想给你看这些。",
+  "discoverContinue": "继续回看",
+  "discoverStories": "这些故事，可能你还没注意过",
+  "discoverNoResults": "当前筛选下没有找到记忆。",
+  "sectionRecent": "最近发现",
+  "sectionPeople": "人物",
+  "sectionPlaces": "地点",
+  "sectionTrips": "旅途",
+  "sectionYears": "年份",
+  "sectionFirstMemories": "初见",
+  "sectionTogether": "每年相聚",
+  "sectionEvolution": "成长变化",
+  "memoryTypeRevisit": "故地重游",
+  "memoryTypeGathering": "聚会时光",
+  "filterPlacePrefix": "地点",
+  "filterPerson": "这个人",
+  "filterPhotos": "照片",
+  "filterVideos": "视频",
+  "filterFavorites": "收藏",
+  "filterClearAll": "清除全部",
+  "filterSheetTitle": "筛选",
+  "filterGroupTime": "时间",
+  "filterGroupPlace": "地点",
+  "filterGroupMemory": "记忆类型",
+  "filterGroupMedia": "媒体",
+  "filterApply": "查看结果",
+  "sortRecommended": "推荐",
+  "sortNewest": "最新",
+  "sortOldest": "最早",
+  "sortMostPhotos": "照片最多",
+  "searchHint": "搜索年份、地点、故事…",
+  "searchFilters": "高级筛选",
+  "searchNoResults": "没有匹配的记忆，换个词试试。",
+  "timelineEmpty": "整理完成后，你的时间线会出现在这里。",
+  "timelineMonth": "{month} 月",
+  "@timelineMonth": {
+    "placeholders": {
+      "month": {
+        "type": "int"
+      }
+    }
+  },
+  "placeAssetCount": "{count} 张照片和视频",
+  "@placeAssetCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "personNeutralLabel": "这个人",
+  "personPhotoCount": "{count} 张照片和视频",
+  "@personPhotoCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  }
 }

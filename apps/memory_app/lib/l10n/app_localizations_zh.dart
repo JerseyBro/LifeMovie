@@ -306,4 +306,133 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get samePlaceAcrossYearsTitle => '你已经连续几年来到这里。';
+
+  @override
+  String get navDiscover => '发现';
+
+  @override
+  String get navTimeline => '时光';
+
+  @override
+  String get navSearch => '搜索';
+
+  @override
+  String get discoverForYou => '今天，我想给你看这些。';
+
+  @override
+  String get discoverContinue => '继续回看';
+
+  @override
+  String get discoverStories => '这些故事，可能你还没注意过';
+
+  @override
+  String get discoverNoResults => '当前筛选下没有找到记忆。';
+
+  @override
+  String get sectionRecent => '最近发现';
+
+  @override
+  String get sectionPeople => '人物';
+
+  @override
+  String get sectionPlaces => '地点';
+
+  @override
+  String get sectionTrips => '旅途';
+
+  @override
+  String get sectionYears => '年份';
+
+  @override
+  String get sectionFirstMemories => '初见';
+
+  @override
+  String get sectionTogether => '每年相聚';
+
+  @override
+  String get sectionEvolution => '成长变化';
+
+  @override
+  String get memoryTypeRevisit => '故地重游';
+
+  @override
+  String get memoryTypeGathering => '聚会时光';
+
+  @override
+  String get filterPlacePrefix => '地点';
+
+  @override
+  String get filterPerson => '这个人';
+
+  @override
+  String get filterPhotos => '照片';
+
+  @override
+  String get filterVideos => '视频';
+
+  @override
+  String get filterFavorites => '收藏';
+
+  @override
+  String get filterClearAll => '清除全部';
+
+  @override
+  String get filterSheetTitle => '筛选';
+
+  @override
+  String get filterGroupTime => '时间';
+
+  @override
+  String get filterGroupPlace => '地点';
+
+  @override
+  String get filterGroupMemory => '记忆类型';
+
+  @override
+  String get filterGroupMedia => '媒体';
+
+  @override
+  String get filterApply => '查看结果';
+
+  @override
+  String get sortRecommended => '推荐';
+
+  @override
+  String get sortNewest => '最新';
+
+  @override
+  String get sortOldest => '最早';
+
+  @override
+  String get sortMostPhotos => '照片最多';
+
+  @override
+  String get searchHint => '搜索年份、地点、故事…';
+
+  @override
+  String get searchFilters => '高级筛选';
+
+  @override
+  String get searchNoResults => '没有匹配的记忆，换个词试试。';
+
+  @override
+  String get timelineEmpty => '整理完成后，你的时间线会出现在这里。';
+
+  @override
+  String timelineMonth(int month) {
+    return '$month 月';
+  }
+
+  @override
+  String placeAssetCount(int count) {
+    return '$count 张照片和视频';
+  }
+
+  @override
+  String get personNeutralLabel => '这个人';
+
+  @override
+  String personPhotoCount(int count) {
+    return '$count 张照片和视频';
+  }
 }

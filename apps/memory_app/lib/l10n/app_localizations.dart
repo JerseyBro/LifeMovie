@@ -643,6 +643,252 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'你已经连续几年来到这里。'**
   String get samePlaceAcrossYearsTitle;
+
+  /// No description provided for @navDiscover.
+  ///
+  /// In zh, this message translates to:
+  /// **'发现'**
+  String get navDiscover;
+
+  /// No description provided for @navTimeline.
+  ///
+  /// In zh, this message translates to:
+  /// **'时光'**
+  String get navTimeline;
+
+  /// No description provided for @navSearch.
+  ///
+  /// In zh, this message translates to:
+  /// **'搜索'**
+  String get navSearch;
+
+  /// No description provided for @discoverForYou.
+  ///
+  /// In zh, this message translates to:
+  /// **'今天，我想给你看这些。'**
+  String get discoverForYou;
+
+  /// No description provided for @discoverContinue.
+  ///
+  /// In zh, this message translates to:
+  /// **'继续回看'**
+  String get discoverContinue;
+
+  /// No description provided for @discoverStories.
+  ///
+  /// In zh, this message translates to:
+  /// **'这些故事，可能你还没注意过'**
+  String get discoverStories;
+
+  /// No description provided for @discoverNoResults.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前筛选下没有找到记忆。'**
+  String get discoverNoResults;
+
+  /// No description provided for @sectionRecent.
+  ///
+  /// In zh, this message translates to:
+  /// **'最近发现'**
+  String get sectionRecent;
+
+  /// No description provided for @sectionPeople.
+  ///
+  /// In zh, this message translates to:
+  /// **'人物'**
+  String get sectionPeople;
+
+  /// No description provided for @sectionPlaces.
+  ///
+  /// In zh, this message translates to:
+  /// **'地点'**
+  String get sectionPlaces;
+
+  /// No description provided for @sectionTrips.
+  ///
+  /// In zh, this message translates to:
+  /// **'旅途'**
+  String get sectionTrips;
+
+  /// No description provided for @sectionYears.
+  ///
+  /// In zh, this message translates to:
+  /// **'年份'**
+  String get sectionYears;
+
+  /// No description provided for @sectionFirstMemories.
+  ///
+  /// In zh, this message translates to:
+  /// **'初见'**
+  String get sectionFirstMemories;
+
+  /// No description provided for @sectionTogether.
+  ///
+  /// In zh, this message translates to:
+  /// **'每年相聚'**
+  String get sectionTogether;
+
+  /// No description provided for @sectionEvolution.
+  ///
+  /// In zh, this message translates to:
+  /// **'成长变化'**
+  String get sectionEvolution;
+
+  /// No description provided for @memoryTypeRevisit.
+  ///
+  /// In zh, this message translates to:
+  /// **'故地重游'**
+  String get memoryTypeRevisit;
+
+  /// No description provided for @memoryTypeGathering.
+  ///
+  /// In zh, this message translates to:
+  /// **'聚会时光'**
+  String get memoryTypeGathering;
+
+  /// No description provided for @filterPlacePrefix.
+  ///
+  /// In zh, this message translates to:
+  /// **'地点'**
+  String get filterPlacePrefix;
+
+  /// No description provided for @filterPerson.
+  ///
+  /// In zh, this message translates to:
+  /// **'这个人'**
+  String get filterPerson;
+
+  /// No description provided for @filterPhotos.
+  ///
+  /// In zh, this message translates to:
+  /// **'照片'**
+  String get filterPhotos;
+
+  /// No description provided for @filterVideos.
+  ///
+  /// In zh, this message translates to:
+  /// **'视频'**
+  String get filterVideos;
+
+  /// No description provided for @filterFavorites.
+  ///
+  /// In zh, this message translates to:
+  /// **'收藏'**
+  String get filterFavorites;
+
+  /// No description provided for @filterClearAll.
+  ///
+  /// In zh, this message translates to:
+  /// **'清除全部'**
+  String get filterClearAll;
+
+  /// No description provided for @filterSheetTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'筛选'**
+  String get filterSheetTitle;
+
+  /// No description provided for @filterGroupTime.
+  ///
+  /// In zh, this message translates to:
+  /// **'时间'**
+  String get filterGroupTime;
+
+  /// No description provided for @filterGroupPlace.
+  ///
+  /// In zh, this message translates to:
+  /// **'地点'**
+  String get filterGroupPlace;
+
+  /// No description provided for @filterGroupMemory.
+  ///
+  /// In zh, this message translates to:
+  /// **'记忆类型'**
+  String get filterGroupMemory;
+
+  /// No description provided for @filterGroupMedia.
+  ///
+  /// In zh, this message translates to:
+  /// **'媒体'**
+  String get filterGroupMedia;
+
+  /// No description provided for @filterApply.
+  ///
+  /// In zh, this message translates to:
+  /// **'查看结果'**
+  String get filterApply;
+
+  /// No description provided for @sortRecommended.
+  ///
+  /// In zh, this message translates to:
+  /// **'推荐'**
+  String get sortRecommended;
+
+  /// No description provided for @sortNewest.
+  ///
+  /// In zh, this message translates to:
+  /// **'最新'**
+  String get sortNewest;
+
+  /// No description provided for @sortOldest.
+  ///
+  /// In zh, this message translates to:
+  /// **'最早'**
+  String get sortOldest;
+
+  /// No description provided for @sortMostPhotos.
+  ///
+  /// In zh, this message translates to:
+  /// **'照片最多'**
+  String get sortMostPhotos;
+
+  /// No description provided for @searchHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'搜索年份、地点、故事…'**
+  String get searchHint;
+
+  /// No description provided for @searchFilters.
+  ///
+  /// In zh, this message translates to:
+  /// **'高级筛选'**
+  String get searchFilters;
+
+  /// No description provided for @searchNoResults.
+  ///
+  /// In zh, this message translates to:
+  /// **'没有匹配的记忆，换个词试试。'**
+  String get searchNoResults;
+
+  /// No description provided for @timelineEmpty.
+  ///
+  /// In zh, this message translates to:
+  /// **'整理完成后，你的时间线会出现在这里。'**
+  String get timelineEmpty;
+
+  /// No description provided for @timelineMonth.
+  ///
+  /// In zh, this message translates to:
+  /// **'{month} 月'**
+  String timelineMonth(int month);
+
+  /// No description provided for @placeAssetCount.
+  ///
+  /// In zh, this message translates to:
+  /// **'{count} 张照片和视频'**
+  String placeAssetCount(int count);
+
+  /// No description provided for @personNeutralLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'这个人'**
+  String get personNeutralLabel;
+
+  /// No description provided for @personPhotoCount.
+  ///
+  /// In zh, this message translates to:
+  /// **'{count} 张照片和视频'**
+  String personPhotoCount(int count);
 }
 
 class _AppLocalizationsDelegate

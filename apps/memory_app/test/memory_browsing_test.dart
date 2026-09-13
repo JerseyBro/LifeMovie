@@ -5,7 +5,7 @@ import 'package:flutter/material.dart' hide DateTimeRange;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:media_library/media_library.dart';
 import 'package:memory_app/l10n/app_localizations.dart';
-import 'package:memory_app/screens/memory_detail_page.dart';
+import 'package:memory_app/memory_detail/memory_detail_page.dart';
 import 'package:memory_app/widgets/media_preview.dart';
 import 'package:memory_app/widgets/memory_card.dart';
 import 'package:memory_domain/memory_domain.dart';

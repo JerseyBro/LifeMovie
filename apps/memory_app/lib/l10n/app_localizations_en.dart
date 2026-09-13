@@ -316,4 +316,134 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get samePlaceAcrossYearsTitle =>
       'You have returned here across years.';
+
+  @override
+  String get navDiscover => 'Discover';
+
+  @override
+  String get navTimeline => 'Timeline';
+
+  @override
+  String get navSearch => 'Search';
+
+  @override
+  String get discoverForYou => 'Today, I\'d like to show you these.';
+
+  @override
+  String get discoverContinue => 'Keep watching';
+
+  @override
+  String get discoverStories => 'Stories you may not have noticed';
+
+  @override
+  String get discoverNoResults => 'No memories match the current filters.';
+
+  @override
+  String get sectionRecent => 'Recently Discovered';
+
+  @override
+  String get sectionPeople => 'People';
+
+  @override
+  String get sectionPlaces => 'Places';
+
+  @override
+  String get sectionTrips => 'Trips';
+
+  @override
+  String get sectionYears => 'Years';
+
+  @override
+  String get sectionFirstMemories => 'First Memories';
+
+  @override
+  String get sectionTogether => 'Together, Every Year';
+
+  @override
+  String get sectionEvolution => 'Over the Years';
+
+  @override
+  String get memoryTypeRevisit => 'Revisit';
+
+  @override
+  String get memoryTypeGathering => 'Gatherings';
+
+  @override
+  String get filterPlacePrefix => 'Place';
+
+  @override
+  String get filterPerson => 'This person';
+
+  @override
+  String get filterPhotos => 'Photos';
+
+  @override
+  String get filterVideos => 'Videos';
+
+  @override
+  String get filterFavorites => 'Favorites';
+
+  @override
+  String get filterClearAll => 'Clear all';
+
+  @override
+  String get filterSheetTitle => 'Filters';
+
+  @override
+  String get filterGroupTime => 'Time';
+
+  @override
+  String get filterGroupPlace => 'Place';
+
+  @override
+  String get filterGroupMemory => 'Memory type';
+
+  @override
+  String get filterGroupMedia => 'Media';
+
+  @override
+  String get filterApply => 'See results';
+
+  @override
+  String get sortRecommended => 'Recommended';
+
+  @override
+  String get sortNewest => 'Newest';
+
+  @override
+  String get sortOldest => 'Oldest';
+
+  @override
+  String get sortMostPhotos => 'Most photos';
+
+  @override
+  String get searchHint => 'Search years, places, stories…';
+
+  @override
+  String get searchFilters => 'Advanced filters';
+
+  @override
+  String get searchNoResults => 'No matching memories. Try another term.';
+
+  @override
+  String get timelineEmpty =>
+      'Your timeline will appear here after organizing.';
+
+  @override
+  String timelineMonth(int month) {
+    return 'Month $month';
+  }
+
+  @override
+  String placeAssetCount(int count) {
+    return '$count photos and videos';
+  }
+
+  @override
+  String get personNeutralLabel => 'This person';
+
+  @override
+  String personPhotoCount(int count) {
+    return '$count photos and videos';
+  }
 }

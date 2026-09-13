@@ -190,5 +190,67 @@
   },
   "longTermEvolutionTitle": "These photos record change over time.",
   "annualTogetherTitle": "Around this time each year, a similar set appears.",
-  "samePlaceAcrossYearsTitle": "You have returned here across years."
+  "samePlaceAcrossYearsTitle": "You have returned here across years.",
+  "navDiscover": "Discover",
+  "navTimeline": "Timeline",
+  "navSearch": "Search",
+  "discoverForYou": "Today, I'd like to show you these.",
+  "discoverContinue": "Keep watching",
+  "discoverStories": "Stories you may not have noticed",
+  "discoverNoResults": "No memories match the current filters.",
+  "sectionRecent": "Recently Discovered",
+  "sectionPeople": "People",
+  "sectionPlaces": "Places",
+  "sectionTrips": "Trips",
+  "sectionYears": "Years",
+  "sectionFirstMemories": "First Memories",
+  "sectionTogether": "Together, Every Year",
+  "sectionEvolution": "Over the Years",
+  "memoryTypeRevisit": "Revisit",
+  "memoryTypeGathering": "Gatherings",
+  "filterPlacePrefix": "Place",
+  "filterPerson": "This person",
+  "filterPhotos": "Photos",
+  "filterVideos": "Videos",
+  "filterFavorites": "Favorites",
+  "filterClearAll": "Clear all",
+  "filterSheetTitle": "Filters",
+  "filterGroupTime": "Time",
+  "filterGroupPlace": "Place",
+  "filterGroupMemory": "Memory type",
+  "filterGroupMedia": "Media",
+  "filterApply": "See results",
+  "sortRecommended": "Recommended",
+  "sortNewest": "Newest",
+  "sortOldest": "Oldest",
+  "sortMostPhotos": "Most photos",
+  "searchHint": "Search years, places, stories…",
+  "searchFilters": "Advanced filters",
+  "searchNoResults": "No matching memories. Try another term.",
+  "timelineEmpty": "Your timeline will appear here after organizing.",
+  "timelineMonth": "Month {month}",
+  "@timelineMonth": {
+    "placeholders": {
+      "month": {
+        "type": "int"
+      }
+    }
+  },
+  "placeAssetCount": "{count} photos and videos",
+  "@placeAssetCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "personNeutralLabel": "This person",
+  "personPhotoCount": "{count} photos and videos",
+  "@personPhotoCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  }
 }
