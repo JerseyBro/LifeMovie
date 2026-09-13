@@ -1,5 +1,6 @@
 library;
 
+export 'discovery_query.dart';
 export 'edit_recipe.dart';
 
 import 'dart:convert';

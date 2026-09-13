@@ -2,6 +2,8 @@ library;
 
 // ignore_for_file: deprecated_member_use
 
+export 'discovery_query.dart';
+
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math' as math;
@@ -154,6 +156,13 @@ Map<String, List<MediaAsset>> _groupByPlaceCluster(
   }
   return result;
 }
+
+/// Public wrapper for discovery dimension indexing. Same 500m clustering the
+/// rules use; read-only over assets.
+Map<String, List<MediaAsset>> groupAssetsByPlaceCluster(
+  Iterable<MediaAsset> assets, {
+  LocationClusterConfig config = const LocationClusterConfig(),
+}) => _groupByPlaceCluster(assets, config);
 
 List<_LocationCluster> _buildLocationClusters(
   Iterable<MediaAsset> assets,
