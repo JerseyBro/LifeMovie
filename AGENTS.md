@@ -17,9 +17,9 @@ Build an AI Native personal memory app that helps people rediscover stories alre
 
 ## Current stage
 
-Sprint 0.9 Product Experience & First WOW polish is active on branch `feat/product-experience-v0.9` (not merged to main).
+Sprint 1.0 Native Media Experience & Memory Discovery is complete (machine-verified) on branch `feat/native-memory-experience-v1.0` (not merged to main); real-device Gates (Media UX ≥B / Discovery 3-taps / Recovery / First WOW) await manual validation. See `docs/SPRINT_1_0_REPORT.md`.
 
-Sprint 0.8.1 hardened year semantics (`YearMetrics`), distance-based location clustering, travel two-phase enrichment, evaluation opaque id, localization boundary (`MemoryCandidateCopyMapper` + ARB), and large-library paging. Sprint 0.9 focuses on Memory Detail V2, tappable gallery, fullscreen photo viewer gestures, preview-size separation, First WOW internal evaluation, and smaller presentation files. See `docs/SPRINT_0_8_1_FIX_REPORT.md` and `docs/SPRINT_0_9_REPORT.md`.
+Sprint 0.9 froze as Prototype Milestone (branch `feat/product-experience-v0.9` @ `11bc600`). Sprint 1.0 delivered Viewer V3 (explicit gesture ownership, progressive loading, filmstrip, zoom-open transition), Info sheet, non-destructive editor (`EditRecipe`), Discovery Home V3 (Discover/Timeline/Search), `MemoryDiscoveryQuery` filter model, and DiscoveryDimensionIndex. Key docs: `docs/adr/ADR_MEDIA_VIEWER_ARCHITECTURE.md`, `docs/product/PHOTO_EXPERIENCE_BENCHMARK.md`, `docs/product/DISCOVERY_HOME_BENCHMARK.md`.
 
 The product is Simplified Chinese first. The immediate goal is not an AI video editor; it is Memory Discovery that can surface meaningful, surprising, safe and explainable stories from a local photo library.
 
@@ -61,6 +61,15 @@ Do not add backend, cloud sync, commercial analytics, production face identity, 
 - Fullscreen viewer must support swipe, double-tap zoom, tap chrome toggle, close, position indicator, and downward dismiss while avoiding obvious PageView/zoom conflicts.
 - First WOW evaluation is internal/debug only and must store local, anonymized feedback labels; do not upload real media or personal identifiers.
 - Presentation files should remain small enough for handoff; split screens/widgets incrementally instead of introducing a new framework.
+
+## Sprint 1.0 implementation rules
+
+- Viewer gesture ownership follows `docs/adr/ADR_MEDIA_VIEWER_ARCHITECTURE.md`: exactly one owner per touch sequence (paging / dismiss / zoom / zoomedPan); do not add competing GestureDetectors or flip PageView physics mid-gesture.
+- Media loading keeps the quality ladder (grid 360 / feed 720 / detail 1200 / viewer 2200 / original only explicit) with the viewer LRU budget and out-of-window cancellation; never reintroduce unbounded byte maps.
+- Photo editing is non-destructive by contract: only `EditRecipe` metadata may be stored (`EditRecipeStore`); originals, PhotoKit metadata and export writes stay untouched unless the user explicitly expands scope.
+- Discovery UI mutates `MemoryDiscoveryQuery` (AND across dimensions, OR within); filtering/sorting must go through `DiscoveryQueryEngine` — never re-rank or rescan in widgets.
+- Explore sections render only when real data exists (`DiscoveryDimensionSummary`); People requires reliable person grouping and uses neutral copy without identity or relationship inference.
+- Bottom chrome only exposes implemented actions; no placeholder buttons.
 
 ## Tests and style
 
