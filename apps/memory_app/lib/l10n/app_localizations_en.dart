@@ -161,6 +161,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get detailAiPlaceholder => 'Organizing this memory…';
 
   @override
+  String get viewerLoadFailed => 'Unable to load photo';
+
+  @override
+  String get viewerRetry => 'Retry';
+
+  @override
   String get dateClusterTitle => 'These days left many photos.';
 
   @override

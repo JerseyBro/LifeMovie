@@ -1,3 +1,4 @@
+import 'dart:collection';
 import 'dart:typed_data';
 
 import 'package:design_system/design_system.dart';
@@ -8,6 +9,28 @@ const int feedPreviewSize = 720;
 const int detailPreviewSize = 1200;
 const int viewerPreviewSize = 2200;
 const int gridPreviewSize = 360;
+
+/// Small app-wide LRU of last loaded bytes per asset id. Lets the viewer's
+/// open transition start from the exact thumbnail the user tapped, with no
+/// spinner in between (ADR open-transition contract).
+class ThumbnailBytesCache {
+  ThumbnailBytesCache._();
+
+  static final ThumbnailBytesCache instance = ThumbnailBytesCache._();
+
+  static const int _maxEntries = 80;
+  final LinkedHashMap<String, Uint8List> _cache = LinkedHashMap();
+
+  Uint8List? get(String assetId) => _cache[assetId];
+
+  void put(String assetId, Uint8List bytes) {
+    _cache.remove(assetId);
+    _cache[assetId] = bytes;
+    while (_cache.length > _maxEntries) {
+      _cache.remove(_cache.keys.first);
+    }
+  }
+}
 
 class MediaPreview extends StatefulWidget {
   const MediaPreview({
@@ -95,6 +118,9 @@ class _MediaPreviewState extends State<MediaPreview> {
       builder: (context, snapshot) {
         final bytes = snapshot.data;
         if (bytes == null) return const _PreviewPlaceholder();
+        if (assetId != null) {
+          ThumbnailBytesCache.instance.put(assetId!, bytes);
+        }
         return Image.memory(
           bytes,
           fit: widget.fit,
@@ -104,6 +130,8 @@ class _MediaPreviewState extends State<MediaPreview> {
       },
     ),
   );
+
+  String? get assetId => widget.assetId;
 }
 
 class MediaPreviewTile extends StatelessWidget {

@@ -1,12 +1,12 @@
 import 'package:ai_gateway/ai_gateway.dart';
 import 'package:design_system/design_system.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:media_library/media_library.dart';
 import 'package:memory_app/l10n/app_localizations.dart';
+import 'package:memory_app/media_viewer/media_viewer_page.dart';
+import 'package:memory_app/media_viewer/photo_open_transition.dart';
 import 'package:memory_app/presentation/memory_candidate_copy_mapper.dart';
-import 'package:memory_app/screens/photo_viewer_page.dart';
 import 'package:memory_app/widgets/media_preview.dart';
 import 'package:memory_domain/memory_domain.dart';
 import 'package:memory_engine/memory_engine.dart';
@@ -14,7 +14,8 @@ import 'package:memory_engine/memory_engine.dart';
 /// Story detail V2: hero, title, time/place/count, summary,
 /// highlights grid, year timeline, metadata-light, feedback slot.
 ///
-/// Every visible photo opens fullscreen viewer at tapped index.
+/// Every visible photo opens fullscreen viewer V3 at the tapped index with a
+/// zoom-continuity open transition (ADR_MEDIA_VIEWER_ARCHITECTURE).
 class MemoryDetailPage extends StatelessWidget {
   const MemoryDetailPage({
     super.key,
@@ -40,18 +41,50 @@ class MemoryDetailPage extends StatelessWidget {
   void _openViewer(
     BuildContext context,
     List<MediaAsset> assets,
-    int initialIndex,
-  ) {
+    int initialIndex, {
+    Rect? sourceRect,
+  }) {
     if (assets.isEmpty) return;
+    final asset = assets[initialIndex];
     Navigator.of(context).push(
-      CupertinoPageRoute(
-        builder: (_) => FullscreenPhotoViewerPage(
+      PhotoViewerRoute(
+        sourceRect: sourceRect,
+        sourceThumb: ThumbnailBytesCache.instance.get(asset.id),
+        targetAspectRatio: _aspectOf(asset),
+        builder: (_) => MediaViewerPage(
           repository: repository,
           assets: assets,
           initialIndex: initialIndex,
+          initialSourceRect: sourceRect,
+          initialThumb: ThumbnailBytesCache.instance.get(asset.id),
+          memoryScopeLabel: const MemoryCandidateCopyMapper()
+              .map(candidate, AppLocalizations.of(context)!)
+              .title,
         ),
       ),
     );
+  }
+
+  static double _aspectOf(MediaAsset asset) {
+    final width = asset.width;
+    final height = asset.height;
+    if (width == null || height == null || width == 0 || height == 0) {
+      return 3 / 4;
+    }
+    return width / height;
+  }
+
+  void _openViewerFromTile(
+    BuildContext tileContext,
+    List<MediaAsset> assets,
+    int index,
+  ) {
+    Rect? rect;
+    final box = tileContext.findRenderObject();
+    if (box is RenderBox && box.hasSize) {
+      rect = box.localToGlobal(Offset.zero) & box.size;
+    }
+    _openViewer(tileContext, assets, index, sourceRect: rect);
   }
 
   @override
@@ -108,7 +141,7 @@ class MemoryDetailPage extends StatelessWidget {
           _ThumbnailGrid(
             repository: repository,
             assets: representativeAssets.take(12).toList(),
-            onOpen: (index) => _openViewer(
+            onOpen: (context, index) => _openViewerFromTile(
               context,
               representativeAssets.take(12).toList(),
               index,
@@ -127,8 +160,11 @@ class MemoryDetailPage extends StatelessWidget {
                 _ThumbnailGrid(
                   repository: repository,
                   assets: entry.value.take(6).toList(),
-                  onOpen: (index) =>
-                      _openViewer(context, entry.value.take(6).toList(), index),
+                  onOpen: (context, index) => _openViewerFromTile(
+                    context,
+                    entry.value.take(6).toList(),
+                    index,
+                  ),
                 ),
               ],
             ),
@@ -174,7 +210,7 @@ class _ThumbnailGrid extends StatelessWidget {
 
   final MediaRepository repository;
   final List<MediaAsset> assets;
-  final ValueChanged<int> onOpen;
+  final void Function(BuildContext tileContext, int index) onOpen;
 
   @override
   Widget build(BuildContext context) => GridView.builder(
@@ -186,12 +222,14 @@ class _ThumbnailGrid extends StatelessWidget {
       mainAxisSpacing: AppSpacing.small,
       crossAxisSpacing: AppSpacing.small,
     ),
-    itemBuilder: (context, index) => MediaPreviewTile(
-      key: ValueKey(assets[index].id),
-      repository: repository,
-      assetId: assets[index].id,
-      size: gridPreviewSize,
-      onTap: () => onOpen(index),
+    itemBuilder: (context, index) => Builder(
+      builder: (tileContext) => MediaPreviewTile(
+        key: ValueKey(assets[index].id),
+        repository: repository,
+        assetId: assets[index].id,
+        size: gridPreviewSize,
+        onTap: () => onOpen(tileContext, index),
+      ),
     ),
   );
 }

@@ -36,8 +36,11 @@ void main() {
       final result = await _runOnce(size);
       print('PERF_SMOKE_V081 ${jsonEncode({'dataset_size': size, ...result})}');
       expect(result['candidate_count'] as int, greaterThan(0));
-      expect(result['time_to_top_10_ms'] as int, lessThan(2000),
-          reason: '60K/75K should not explode with new clustering');
+      expect(
+        result['time_to_top_10_ms'] as int,
+        lessThan(2000),
+        reason: '60K/75K should not explode with new clustering',
+      );
     }
   });
 }

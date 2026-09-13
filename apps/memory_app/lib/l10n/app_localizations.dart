@@ -338,6 +338,18 @@ abstract class AppLocalizations {
   /// **'正在整理这段记忆……'**
   String get detailAiPlaceholder;
 
+  /// No description provided for @viewerLoadFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'无法加载图片'**
+  String get viewerLoadFailed;
+
+  /// No description provided for @viewerRetry.
+  ///
+  /// In zh, this message translates to:
+  /// **'重试'**
+  String get viewerRetry;
+
   /// No description provided for @dateClusterTitle.
   ///
   /// In zh, this message translates to:

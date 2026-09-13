@@ -133,6 +133,8 @@
     }
   },
   "detailAiPlaceholder": "Organizing this memory…",
+  "viewerLoadFailed": "Unable to load photo",
+  "viewerRetry": "Retry",
   "dateClusterTitle": "These days left many photos.",
   "samePlaceTitle": "A memory worth revisiting here.",
   "yearRecapTitle": "{year} was full of moments worth revisiting.",

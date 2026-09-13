@@ -153,6 +153,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get detailAiPlaceholder => '正在整理这段记忆……';
 
   @override
+  String get viewerLoadFailed => '无法加载图片';
+
+  @override
+  String get viewerRetry => '重试';
+
+  @override
   String get dateClusterTitle => '这几天留下了很多照片。';
 
   @override

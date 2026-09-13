@@ -133,6 +133,8 @@
     }
   },
   "detailAiPlaceholder": "正在整理这段记忆……",
+  "viewerLoadFailed": "无法加载图片",
+  "viewerRetry": "重试",
   "dateClusterTitle": "这几天留下了很多照片。",
   "samePlaceTitle": "这里有一段值得回看的记忆。",
   "yearRecapTitle": "{year} 年，有很多值得回看的片段。",

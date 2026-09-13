@@ -3,7 +3,8 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart' hide DateTimeRange;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:media_library/media_library.dart';
-import 'package:memory_app/screens/photo_viewer_page.dart';
+import 'package:memory_app/l10n/app_localizations.dart';
+import 'package:memory_app/media_viewer/media_viewer_page.dart';
 import 'package:memory_app/widgets/media_preview.dart';
 import 'package:memory_domain/memory_domain.dart';
 
@@ -14,8 +15,8 @@ void main() {
     final repository = _RecordingMediaRepository();
 
     await tester.pumpWidget(
-      MaterialApp(
-        home: FullscreenPhotoViewerPage(
+      _wrap(
+        MediaViewerPage(
           repository: repository,
           assets: _assets(3),
           initialIndex: 1,
@@ -33,39 +34,44 @@ void main() {
     expect(find.text('3 / 3'), findsOneWidget);
   });
 
-  testWidgets('viewer tap toggles chrome instead of closing immediately', (
-    tester,
-  ) async {
-    final repository = _RecordingMediaRepository();
+  testWidgets(
+    'single tap toggles chrome immediately without double-tap delay',
+    (tester) async {
+      final repository = _RecordingMediaRepository();
 
-    await tester.pumpWidget(
-      MaterialApp(
-        home: FullscreenPhotoViewerPage(
-          repository: repository,
-          assets: _assets(1),
-          initialIndex: 0,
+      await tester.pumpWidget(
+        _wrap(
+          MediaViewerPage(
+            repository: repository,
+            assets: _assets(1),
+            initialIndex: 0,
+          ),
         ),
-      ),
-    );
-    await tester.pump();
+      );
+      await tester.pump();
 
-    expect(find.byIcon(Icons.close), findsOneWidget);
+      expect(_chromeOpacity(tester), 1.0);
 
-    // onTap shares the recognizer with onDoubleTap, so it fires only after
-    // the double-tap timeout. pumpAndSettle alone never advances that timer.
-    await tester.tap(find.byType(PageView));
-    await tester.pump(const Duration(milliseconds: 400));
+      // ImmediateTapRecognizer fires on pointer-up: no double-tap wait.
+      await tester.tap(find.byType(PageView));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 220));
 
-    expect(find.byType(FullscreenPhotoViewerPage), findsOneWidget);
-    expect(find.byIcon(Icons.close), findsNothing);
-  });
+      expect(find.byType(MediaViewerPage), findsOneWidget);
+      expect(
+        _chromeOpacity(tester),
+        0.0,
+        reason: 'chrome hides instantly on tap (chrome stays mounted)',
+      );
+    },
+  );
 
   testWidgets('viewer downward drag dismisses when not zoomed', (tester) async {
     final repository = _RecordingMediaRepository();
 
     await tester.pumpWidget(
-      MaterialApp(
-        home: FullscreenPhotoViewerPage(
+      _wrap(
+        MediaViewerPage(
           repository: repository,
           assets: _assets(2),
           initialIndex: 0,
@@ -74,40 +80,45 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.byType(FullscreenPhotoViewerPage), findsOneWidget);
+    expect(find.byType(MediaViewerPage), findsOneWidget);
 
     await tester.fling(find.byType(PageView), const Offset(0, 400), 900);
     await tester.pumpAndSettle();
 
-    expect(find.byType(FullscreenPhotoViewerPage), findsNothing);
+    expect(find.byType(MediaViewerPage), findsNothing);
   });
 
-  testWidgets('viewer horizontal swipe blocked while zoomed', (tester) async {
-    final repository = _RecordingMediaRepository();
+  testWidgets(
+    'double tap zooms and blocks horizontal paging until back to 1x',
+    (tester) async {
+      final repository = _RecordingMediaRepository();
 
-    await tester.pumpWidget(
-      MaterialApp(
-        home: FullscreenPhotoViewerPage(
-          repository: repository,
-          assets: _assets(2),
-          initialIndex: 0,
+      await tester.pumpWidget(
+        _wrap(
+          MediaViewerPage(
+            repository: repository,
+            assets: _assets(2),
+            initialIndex: 0,
+          ),
         ),
-      ),
-    );
-    await tester.pump();
+      );
+      await tester.pump();
 
-    expect(find.text('1 / 2'), findsOneWidget);
+      expect(find.text('1 / 2'), findsOneWidget);
 
-    await tester.tap(find.byType(PageView));
-    await tester.pump(const Duration(milliseconds: 50));
-    await tester.tap(find.byType(PageView));
-    await tester.pumpAndSettle();
+      // Double tap to zoom around the tapped point.
+      await tester.tap(find.byType(PageView));
+      await tester.pump(const Duration(milliseconds: 50));
+      await tester.tap(find.byType(PageView));
+      await tester.pumpAndSettle();
 
-    await tester.drag(find.byType(PageView), const Offset(-500, 0));
-    await tester.pumpAndSettle();
+      // Zoomed: horizontal drag must not page.
+      await tester.drag(find.byType(PageView), const Offset(-500, 0));
+      await tester.pumpAndSettle();
 
-    expect(find.text('1 / 2'), findsOneWidget);
-  });
+      expect(find.text('1 / 2'), findsOneWidget);
+    },
+  );
 
   testWidgets(
     'media preview separates feed thumbnail from high quality preview',
@@ -147,14 +158,94 @@ void main() {
   );
 }
 
+Widget _wrap(Widget child) => MaterialApp(
+  locale: const Locale('zh'),
+  localizationsDelegates: AppLocalizations.localizationsDelegates,
+  supportedLocales: AppLocalizations.supportedLocales,
+  home: child,
+);
+
+double _chromeOpacity(WidgetTester tester) {
+  final opacities = tester.widgetList<AnimatedOpacity>(
+    find.byType(AnimatedOpacity),
+  );
+  return opacities.isEmpty ? 1.0 : opacities.first.opacity;
+}
+
 /// Minimal 1x1 transparent PNG so image widgets render real pixels.
 final Uint8List _transparentPixel = Uint8List.fromList([
-  0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x0D,
-  0x49, 0x48, 0x44, 0x52, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,
-  0x08, 0x06, 0x00, 0x00, 0x00, 0x1F, 0x15, 0xC4, 0x89, 0x00, 0x00, 0x00,
-  0x0D, 0x49, 0x44, 0x41, 0x54, 0x78, 0x9C, 0x63, 0x60, 0x18, 0x05, 0xA3,
-  0x60, 0x14, 0x8C, 0x02, 0x00, 0x00, 0x0D, 0x00, 0x01, 0xE2, 0xB8, 0x1E,
-  0xE6, 0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4E, 0x44, 0xAE, 0x42, 0x60,
+  0x89,
+  0x50,
+  0x4E,
+  0x47,
+  0x0D,
+  0x0A,
+  0x1A,
+  0x0A,
+  0x00,
+  0x00,
+  0x00,
+  0x0D,
+  0x49,
+  0x48,
+  0x44,
+  0x52,
+  0x00,
+  0x00,
+  0x00,
+  0x01,
+  0x00,
+  0x00,
+  0x00,
+  0x01,
+  0x08,
+  0x06,
+  0x00,
+  0x00,
+  0x00,
+  0x1F,
+  0x15,
+  0xC4,
+  0x89,
+  0x00,
+  0x00,
+  0x00,
+  0x0D,
+  0x49,
+  0x44,
+  0x41,
+  0x54,
+  0x78,
+  0x9C,
+  0x63,
+  0x60,
+  0x18,
+  0x05,
+  0xA3,
+  0x60,
+  0x14,
+  0x8C,
+  0x02,
+  0x00,
+  0x00,
+  0x0D,
+  0x00,
+  0x01,
+  0xE2,
+  0xB8,
+  0x1E,
+  0xE6,
+  0x00,
+  0x00,
+  0x00,
+  0x00,
+  0x49,
+  0x45,
+  0x4E,
+  0x44,
+  0xAE,
+  0x42,
+  0x60,
   0x82,
 ]);
 
