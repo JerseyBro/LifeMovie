@@ -1,3 +1,5 @@
+import AVFoundation
+import CoreLocation
 import Flutter
 import Photos
 import PhotosUI
@@ -8,6 +10,8 @@ import UIKit
   private let imageManager = PHCachingImageManager()
   private var thumbnailRequests: [String: PHImageRequestID] = [:]
   private let formatter = ISO8601DateFormatter()
+  private let geocoder = CLGeocoder()
+  private var placeLabelCache: [String: String] = [:]
 
   override func application(
     _ application: UIApplication,
@@ -48,6 +52,20 @@ import UIKit
         } else {
           result(self.photoPermissionStatus())
         }
+      case "setFavorite":
+        let args = call.arguments as? [String: Any]
+        self.setFavorite(id: args?["id"] as? String, favorite: args?["favorite"] as? Bool ?? false, result: result)
+      case "presentShareSheet":
+        let args = call.arguments as? [String: Any]
+        self.presentShareSheet(id: args?["id"] as? String, result: result)
+      case "loadVideoPlaybackUrl":
+        let args = call.arguments as? [String: Any]
+        self.loadVideoPlaybackUrl(id: args?["id"] as? String, result: result)
+      case "loadPlaceLabel":
+        let args = call.arguments as? [String: Any]
+        let latitude = args?["latitude"] as? Double ?? 0
+        let longitude = args?["longitude"] as? Double ?? 0
+        self.loadPlaceLabel(latitude: latitude, longitude: longitude, result: result)
       default: result(FlutterMethodNotImplemented)
       }
     }
@@ -223,6 +241,86 @@ import UIKit
       return
     }
     imageManager.cancelImageRequest(request)
+  }
+
+  private func fetchAsset(id: String?) -> PHAsset? {
+    guard let id else { return nil }
+    return PHAsset.fetchAssets(withLocalIdentifiers: [id], options: nil).firstObject
+  }
+
+  private func setFavorite(id: String?, favorite: Bool, result: @escaping FlutterResult) {
+    guard let asset = fetchAsset(id: id) else {
+      result(false)
+      return
+    }
+    PHPhotoLibrary.shared().performChanges {
+      PHAssetChangeRequest(for: asset).isFavorite = favorite
+    } completionHandler: { success, _ in
+      DispatchQueue.main.async { result(success) }
+    }
+  }
+
+  private func presentShareSheet(id: String?, result: @escaping FlutterResult) {
+    guard let asset = fetchAsset(id: id) else {
+      result(false)
+      return
+    }
+    let scale = UIScreen.main.scale
+    let targetSize = CGSize(width: UIScreen.main.bounds.width * scale, height: UIScreen.main.bounds.height * scale)
+    let options = PHImageRequestOptions()
+    options.deliveryMode = .highQualityFormat
+    options.isNetworkAccessAllowed = true
+    imageManager.requestImage(for: asset, targetSize: targetSize, contentMode: .aspectFit, options: options) { image, _ in
+      guard let image else {
+        result(false)
+        return
+      }
+      let controller = self.window?.rootViewController
+      let activity = UIActivityViewController(activityItems: [image], applicationActivities: nil)
+      // iPad requires an anchor; full-screen presentation avoids crashes.
+      activity.popoverPresentationController?.sourceView = controller?.view
+      controller?.present(activity, animated: true)
+      result(true)
+    }
+  }
+
+  private func loadVideoPlaybackUrl(id: String?, result: @escaping FlutterResult) {
+    guard let asset = fetchAsset(id: id), asset.mediaType == .video else {
+      result(nil)
+      return
+    }
+    let options = PHVideoRequestOptions()
+    options.deliveryMode = .highQualityFormat
+    options.isNetworkAccessAllowed = true
+    imageManager.requestAVAsset(forVideo: asset, options: options) { avAsset, _, _ in
+      DispatchQueue.main.async {
+        if let urlAsset = avAsset as? AVURLAsset {
+          result(urlAsset.url.absoluteString)
+        } else {
+          result(nil)
+        }
+      }
+    }
+  }
+
+  private func loadPlaceLabel(latitude: Double, longitude: Double, result: @escaping FlutterResult) {
+    // City-level label only; exact coordinates never leave this method's key.
+    let cacheKey = String(format: "%.2f,%.2f", latitude, longitude)
+    if let cached = placeLabelCache[cacheKey] {
+      result(cached)
+      return
+    }
+    let location = CLLocation(latitude: latitude, longitude: longitude)
+    geocoder.reverseGeocodeLocation(location) { placemarks, _ in
+      let placemark = placemarks?.first
+      let label = placemark?.locality
+        ?? placemark?.subAdministrativeArea
+        ?? placemark?.administrativeArea
+      if let label {
+        self.placeLabelCache[cacheKey] = label
+      }
+      DispatchQueue.main.async { result(label) }
+    }
   }
 
   private func mediaPredicate(filter: String) -> NSPredicate? {

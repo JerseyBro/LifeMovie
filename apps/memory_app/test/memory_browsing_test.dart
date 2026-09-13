@@ -160,4 +160,17 @@ class _RecordingMediaRepository implements MediaRepository {
   @override
   Future<MediaPermissionStatus> requestPermission() async =>
       MediaPermissionStatus.authorized;
+
+  @override
+  Future<bool> setFavorite(String assetId, {required bool favorite}) async =>
+      true;
+
+  @override
+  Future<bool> presentShareSheet(String assetId) async => false;
+
+  @override
+  Future<String?> loadVideoPlaybackUrl(String assetId) async => null;
+
+  @override
+  Future<String?> loadPlaceLabel(GeoPoint location) async => null;
 }

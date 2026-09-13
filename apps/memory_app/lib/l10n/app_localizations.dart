@@ -350,6 +350,264 @@ abstract class AppLocalizations {
   /// **'重试'**
   String get viewerRetry;
 
+  /// No description provided for @viewerFavorite.
+  ///
+  /// In zh, this message translates to:
+  /// **'收藏'**
+  String get viewerFavorite;
+
+  /// No description provided for @viewerShare.
+  ///
+  /// In zh, this message translates to:
+  /// **'分享'**
+  String get viewerShare;
+
+  /// No description provided for @viewerInfo.
+  ///
+  /// In zh, this message translates to:
+  /// **'简介'**
+  String get viewerInfo;
+
+  /// No description provided for @viewerEdit.
+  ///
+  /// In zh, this message translates to:
+  /// **'编辑'**
+  String get viewerEdit;
+
+  /// No description provided for @viewerVideoPlay.
+  ///
+  /// In zh, this message translates to:
+  /// **'播放'**
+  String get viewerVideoPlay;
+
+  /// No description provided for @viewerVideoPause.
+  ///
+  /// In zh, this message translates to:
+  /// **'暂停'**
+  String get viewerVideoPause;
+
+  /// No description provided for @viewerVideoMute.
+  ///
+  /// In zh, this message translates to:
+  /// **'静音'**
+  String get viewerVideoMute;
+
+  /// No description provided for @viewerVideoUnmute.
+  ///
+  /// In zh, this message translates to:
+  /// **'取消静音'**
+  String get viewerVideoUnmute;
+
+  /// No description provided for @viewerVideoUnavailable.
+  ///
+  /// In zh, this message translates to:
+  /// **'该视频暂时无法播放'**
+  String get viewerVideoUnavailable;
+
+  /// No description provided for @infoTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'照片信息'**
+  String get infoTitle;
+
+  /// No description provided for @infoDate.
+  ///
+  /// In zh, this message translates to:
+  /// **'日期'**
+  String get infoDate;
+
+  /// No description provided for @infoTime.
+  ///
+  /// In zh, this message translates to:
+  /// **'时间'**
+  String get infoTime;
+
+  /// No description provided for @infoLocation.
+  ///
+  /// In zh, this message translates to:
+  /// **'地点'**
+  String get infoLocation;
+
+  /// No description provided for @infoType.
+  ///
+  /// In zh, this message translates to:
+  /// **'类型'**
+  String get infoType;
+
+  /// No description provided for @infoSize.
+  ///
+  /// In zh, this message translates to:
+  /// **'尺寸'**
+  String get infoSize;
+
+  /// No description provided for @infoDuration.
+  ///
+  /// In zh, this message translates to:
+  /// **'时长'**
+  String get infoDuration;
+
+  /// No description provided for @infoMemory.
+  ///
+  /// In zh, this message translates to:
+  /// **'所属记忆'**
+  String get infoMemory;
+
+  /// No description provided for @infoTypePhoto.
+  ///
+  /// In zh, this message translates to:
+  /// **'照片'**
+  String get infoTypePhoto;
+
+  /// No description provided for @infoTypeVideo.
+  ///
+  /// In zh, this message translates to:
+  /// **'视频'**
+  String get infoTypeVideo;
+
+  /// No description provided for @infoTypeLivePhoto.
+  ///
+  /// In zh, this message translates to:
+  /// **'Live Photo'**
+  String get infoTypeLivePhoto;
+
+  /// No description provided for @editorCancel.
+  ///
+  /// In zh, this message translates to:
+  /// **'取消'**
+  String get editorCancel;
+
+  /// No description provided for @editorDone.
+  ///
+  /// In zh, this message translates to:
+  /// **'完成'**
+  String get editorDone;
+
+  /// No description provided for @editorTabAdjust.
+  ///
+  /// In zh, this message translates to:
+  /// **'调整'**
+  String get editorTabAdjust;
+
+  /// No description provided for @editorTabFilter.
+  ///
+  /// In zh, this message translates to:
+  /// **'滤镜'**
+  String get editorTabFilter;
+
+  /// No description provided for @editorTabCrop.
+  ///
+  /// In zh, this message translates to:
+  /// **'裁剪'**
+  String get editorTabCrop;
+
+  /// No description provided for @editorExposure.
+  ///
+  /// In zh, this message translates to:
+  /// **'曝光'**
+  String get editorExposure;
+
+  /// No description provided for @editorBrightness.
+  ///
+  /// In zh, this message translates to:
+  /// **'亮度'**
+  String get editorBrightness;
+
+  /// No description provided for @editorContrast.
+  ///
+  /// In zh, this message translates to:
+  /// **'对比度'**
+  String get editorContrast;
+
+  /// No description provided for @editorHighlights.
+  ///
+  /// In zh, this message translates to:
+  /// **'高光'**
+  String get editorHighlights;
+
+  /// No description provided for @editorShadows.
+  ///
+  /// In zh, this message translates to:
+  /// **'阴影'**
+  String get editorShadows;
+
+  /// No description provided for @editorSaturation.
+  ///
+  /// In zh, this message translates to:
+  /// **'饱和度'**
+  String get editorSaturation;
+
+  /// No description provided for @editorWarmth.
+  ///
+  /// In zh, this message translates to:
+  /// **'色温'**
+  String get editorWarmth;
+
+  /// No description provided for @editorFilterNone.
+  ///
+  /// In zh, this message translates to:
+  /// **'原片'**
+  String get editorFilterNone;
+
+  /// No description provided for @editorFilterVivid.
+  ///
+  /// In zh, this message translates to:
+  /// **'鲜明'**
+  String get editorFilterVivid;
+
+  /// No description provided for @editorFilterWarm.
+  ///
+  /// In zh, this message translates to:
+  /// **'暖调'**
+  String get editorFilterWarm;
+
+  /// No description provided for @editorFilterCool.
+  ///
+  /// In zh, this message translates to:
+  /// **'冷调'**
+  String get editorFilterCool;
+
+  /// No description provided for @editorFilterMono.
+  ///
+  /// In zh, this message translates to:
+  /// **'黑白'**
+  String get editorFilterMono;
+
+  /// No description provided for @editorRotateLeft.
+  ///
+  /// In zh, this message translates to:
+  /// **'向左旋转'**
+  String get editorRotateLeft;
+
+  /// No description provided for @editorRotateRight.
+  ///
+  /// In zh, this message translates to:
+  /// **'向右旋转'**
+  String get editorRotateRight;
+
+  /// No description provided for @editorStraighten.
+  ///
+  /// In zh, this message translates to:
+  /// **'拉直'**
+  String get editorStraighten;
+
+  /// No description provided for @editorAspectFree.
+  ///
+  /// In zh, this message translates to:
+  /// **'自由'**
+  String get editorAspectFree;
+
+  /// No description provided for @editorAspectSquare.
+  ///
+  /// In zh, this message translates to:
+  /// **'方形'**
+  String get editorAspectSquare;
+
+  /// No description provided for @editorReset.
+  ///
+  /// In zh, this message translates to:
+  /// **'还原'**
+  String get editorReset;
+
   /// No description provided for @dateClusterTitle.
   ///
   /// In zh, this message translates to:

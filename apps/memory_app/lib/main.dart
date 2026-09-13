@@ -8,6 +8,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:media_library/media_library.dart';
 import 'package:memory_app/l10n/app_localizations.dart';
+import 'package:memory_app/media_editor/edit_recipe_store.dart';
 import 'package:memory_app/screens/memory_detail_page.dart';
 import 'package:memory_app/screens/memory_lab_page.dart';
 import 'package:memory_app/widgets/memory_card.dart';
@@ -67,6 +68,7 @@ class _MemoryHomePageState extends State<MemoryHomePage> {
       const MemorySensitivityGuard();
 
   MemoryEvaluationStore evaluationStore = InMemoryMemoryEvaluationStore();
+  EditRecipeStore editStore = EditRecipeStore.inMemory();
   MemoryIntelligenceConfig intelligenceConfig =
       const MemoryIntelligenceConfig();
   Set<String> enabledRules = {
@@ -117,8 +119,12 @@ class _MemoryHomePageState extends State<MemoryHomePage> {
       evaluationStore = JsonFileMemoryEvaluationStore(
         File('${dir.path}/memory_evaluations.json'),
       );
+      editStore = EditRecipeStore(
+        File('${dir.path}/lifemovie_edit_recipes.json'),
+      );
     } on Object {
       evaluationStore = InMemoryMemoryEvaluationStore();
+      editStore = EditRecipeStore.inMemory();
     }
   }
 
@@ -461,6 +467,7 @@ class _MemoryHomePageState extends State<MemoryHomePage> {
                                 repository: repository,
                                 ranker: ranker,
                                 contextAssets: indexedAssets,
+                                editStore: editStore,
                               ),
                             ),
                           );

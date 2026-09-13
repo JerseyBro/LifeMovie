@@ -72,6 +72,20 @@ abstract interface class MediaRepository {
   Future<MediaPermissionStatus> presentLimitedLibraryPicker();
   Future<MediaPermissionStatus> getPermissionStatus();
   Future<MediaPermissionStatus> requestPermission();
+
+  /// Toggles the PhotoKit favorite flag. Non-destructive metadata change.
+  Future<bool> setFavorite(String assetId, {required bool favorite});
+
+  /// Presents the system share sheet for the asset. Returns false when the
+  /// platform cannot share (e.g. mock repositories).
+  Future<bool> presentShareSheet(String assetId);
+
+  /// Local playback URL for a video asset, or null when unavailable.
+  Future<String?> loadVideoPlaybackUrl(String assetId);
+
+  /// Coarse place label (city-level) for the Info panel. Returns null when
+  /// unavailable. Never exposes exact coordinates in UI/logging.
+  Future<String?> loadPlaceLabel(GeoPoint location);
 }
 
 class MockMediaRepository implements MediaRepository {
@@ -85,6 +99,27 @@ class MockMediaRepository implements MediaRepository {
   final List<MediaAsset> assets;
   MediaPermissionStatus permissionStatus;
   final Map<String, Uint8List> thumbnails;
+  final Set<String> _favoriteIds = {};
+
+  @override
+  Future<bool> setFavorite(String assetId, {required bool favorite}) async {
+    if (favorite) {
+      _favoriteIds.add(assetId);
+    } else {
+      _favoriteIds.remove(assetId);
+    }
+    return true;
+  }
+
+  @override
+  Future<bool> presentShareSheet(String assetId) async => false;
+
+  @override
+  Future<String?> loadVideoPlaybackUrl(String assetId) async => null;
+
+  @override
+  Future<String?> loadPlaceLabel(GeoPoint location) async =>
+      '地点 ${location.latitude.round()}';
 
   @override
   Future<List<MediaAsset>> fetchAssets({
@@ -233,6 +268,28 @@ class PhotoKitMediaRepository implements MediaRepository {
   @override
   Future<MediaPermissionStatus> requestPermission() async =>
       mapPermission(await _invoke<String>('requestPermission'));
+
+  @override
+  Future<bool> setFavorite(String assetId, {required bool favorite}) async =>
+      await _invoke<bool>('setFavorite', {
+        'id': assetId,
+        'favorite': favorite,
+      }) ??
+      false;
+
+  @override
+  Future<bool> presentShareSheet(String assetId) async =>
+      await _invoke<bool>('presentShareSheet', {'id': assetId}) ?? false;
+
+  @override
+  Future<String?> loadVideoPlaybackUrl(String assetId) =>
+      _invoke<String>('loadVideoPlaybackUrl', {'id': assetId});
+
+  @override
+  Future<String?> loadPlaceLabel(GeoPoint location) => _invoke<String>(
+    'loadPlaceLabel',
+    {'latitude': location.latitude, 'longitude': location.longitude},
+  );
 
   static MediaPermissionStatus mapPermission(String? value) => switch (value) {
     'authorized' => MediaPermissionStatus.authorized,

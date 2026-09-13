@@ -3,11 +3,16 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:media_library/media_library.dart';
+import 'package:memory_app/media_editor/edit_recipe_store.dart';
+import 'package:memory_app/media_editor/media_editor_page.dart';
+import 'package:memory_app/media_viewer/viewer_bottom_bar.dart';
 import 'package:memory_app/media_viewer/viewer_filmstrip.dart';
 import 'package:memory_app/media_viewer/viewer_gesture_policy.dart';
+import 'package:memory_app/media_viewer/viewer_info_sheet.dart';
 import 'package:memory_app/media_viewer/viewer_media_loader.dart';
 import 'package:memory_app/media_viewer/viewer_photo_view.dart';
 import 'package:memory_app/media_viewer/viewer_top_bar.dart';
+import 'package:memory_app/media_viewer/viewer_video_page.dart';
 import 'package:memory_domain/memory_domain.dart';
 
 /// Fullscreen media viewer V3 (ADR_MEDIA_VIEWER_ARCHITECTURE).
@@ -25,6 +30,7 @@ class MediaViewerPage extends StatefulWidget {
     this.initialSourceRect,
     this.initialThumb,
     this.memoryScopeLabel,
+    this.editStore,
   });
 
   final MediaRepository repository;
@@ -33,6 +39,7 @@ class MediaViewerPage extends StatefulWidget {
   final Rect? initialSourceRect;
   final Uint8List? initialThumb;
   final String? memoryScopeLabel;
+  final EditRecipeStore? editStore;
 
   @override
   State<MediaViewerPage> createState() => _MediaViewerPageState();
@@ -56,6 +63,12 @@ class _MediaViewerPageState extends State<MediaViewerPage>
     duration: _dismissDuration,
   );
 
+  // Non-destructive edits: recipes per asset id, favorites per asset id.
+  late final EditRecipeStore _editStore =
+      widget.editStore ?? EditRecipeStore.inMemory();
+  final Map<String, EditRecipe> _recipes = {};
+  final Map<String, bool> _favorites = {};
+
   @override
   void initState() {
     super.initState();
@@ -68,7 +81,21 @@ class _MediaViewerPageState extends State<MediaViewerPage>
       repository: widget.repository,
       assets: widget.assets,
     );
+    for (final asset in widget.assets) {
+      _favorites[asset.id] = asset.isFavorite;
+    }
     _loader.focus(index);
+    _loadRecipe(index);
+  }
+
+  Future<void> _loadRecipe(int index) async {
+    if (index < 0 || index >= widget.assets.length) return;
+    final asset = widget.assets[index];
+    if (asset.type == MediaType.video || asset.type == MediaType.audio) return;
+    final recipe = await _editStore.load(asset.id);
+    if (mounted && recipe != null) {
+      setState(() => _recipes[asset.id] = recipe);
+    }
   }
 
   @override
@@ -117,6 +144,7 @@ class _MediaViewerPageState extends State<MediaViewerPage>
       _dismissOffset = 0;
     });
     _loader.focus(index);
+    _loadRecipe(index);
   }
 
   void _jumpTo(int index) {
@@ -191,6 +219,47 @@ class _MediaViewerPageState extends State<MediaViewerPage>
     });
   }
 
+  // --- Bottom actions ------------------------------------------------------------
+
+  Future<void> _toggleFavorite() async {
+    final asset = widget.assets[_currentIndex];
+    final next = !(_favorites[asset.id] ?? asset.isFavorite);
+    setState(() => _favorites[asset.id] = next);
+    final ok = await widget.repository.setFavorite(asset.id, favorite: next);
+    if (!ok && mounted) {
+      setState(() => _favorites[asset.id] = !next);
+    }
+  }
+
+  Future<void> _shareCurrent() async {
+    await widget.repository.presentShareSheet(widget.assets[_currentIndex].id);
+  }
+
+  void _showInfo() {
+    showViewerInfoSheet(
+      context,
+      asset: widget.assets[_currentIndex],
+      repository: widget.repository,
+      memoryScopeLabel: widget.memoryScopeLabel,
+    );
+  }
+
+  Future<void> _openEditor() async {
+    final asset = widget.assets[_currentIndex];
+    if (asset.type == MediaType.video || asset.type == MediaType.audio) return;
+    await Navigator.of(context).push(
+      MaterialPageRoute<EditRecipe>(
+        builder: (_) => MediaEditorPage(
+          repository: widget.repository,
+          asset: asset,
+          store: _editStore,
+          initialRecipe: _recipes[asset.id],
+        ),
+      ),
+    );
+    await _loadRecipe(_currentIndex);
+  }
+
   // --- Build ---------------------------------------------------------------------
 
   @override
@@ -217,21 +286,38 @@ class _MediaViewerPageState extends State<MediaViewerPage>
                       : const PageScrollPhysics(),
                   itemCount: widget.assets.length,
                   onPageChanged: _onPageChanged,
-                  itemBuilder: (context, index) => ViewerPhotoView(
-                    key: ValueKey('photo-$index'),
-                    loader: _loader,
-                    index: index,
-                    asset: widget.assets[index],
-                    isActive: index == _currentIndex,
-                    initialThumb: index == _currentIndex
-                        ? widget.initialThumb
-                        : null,
-                    onZoomChanged: _onZoomChanged,
-                    onDismissUpdate: _onDismissUpdate,
-                    onDismissEnd: _onDismissEnd,
-                    onTap: _handleTap,
-                    onDoubleTap: _handleDoubleTap,
-                  ),
+                  itemBuilder: (context, index) {
+                    final asset = widget.assets[index];
+                    if (asset.type == MediaType.video ||
+                        asset.type == MediaType.audio) {
+                      return ViewerVideoPage(
+                        key: ValueKey('video-$index'),
+                        repository: widget.repository,
+                        asset: asset,
+                        isActive: index == _currentIndex,
+                        onTap: _handleTap,
+                        onDoubleTap: _handleDoubleTap,
+                        onDismissUpdate: _onDismissUpdate,
+                        onDismissEnd: _onDismissEnd,
+                      );
+                    }
+                    return ViewerPhotoView(
+                      key: ValueKey('photo-$index'),
+                      loader: _loader,
+                      index: index,
+                      asset: asset,
+                      isActive: index == _currentIndex,
+                      initialThumb: index == _currentIndex
+                          ? widget.initialThumb
+                          : null,
+                      recipe: _recipes[asset.id],
+                      onZoomChanged: _onZoomChanged,
+                      onDismissUpdate: _onDismissUpdate,
+                      onDismissEnd: _onDismissEnd,
+                      onTap: _handleTap,
+                      onDoubleTap: _handleDoubleTap,
+                    );
+                  },
                 ),
               ),
             ),
@@ -253,11 +339,26 @@ class _MediaViewerPageState extends State<MediaViewerPage>
                   const Spacer(),
                   SafeArea(
                     top: false,
-                    child: ViewerFilmstrip(
-                      repository: widget.repository,
-                      assets: widget.assets,
-                      currentIndex: _currentIndex,
-                      onIndexSelected: _jumpTo,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        ViewerBottomBar(
+                          asset: widget.assets[_currentIndex],
+                          isFavorite:
+                              _favorites[widget.assets[_currentIndex].id] ??
+                              false,
+                          onToggleFavorite: _toggleFavorite,
+                          onShare: _shareCurrent,
+                          onInfo: _showInfo,
+                          onEdit: _openEditor,
+                        ),
+                        ViewerFilmstrip(
+                          repository: widget.repository,
+                          assets: widget.assets,
+                          currentIndex: _currentIndex,
+                          onIndexSelected: _jumpTo,
+                        ),
+                      ],
                     ),
                   ),
                 ],

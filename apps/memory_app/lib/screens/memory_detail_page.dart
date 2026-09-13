@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:media_library/media_library.dart';
 import 'package:memory_app/l10n/app_localizations.dart';
+import 'package:memory_app/media_editor/edit_recipe_store.dart';
 import 'package:memory_app/media_viewer/media_viewer_page.dart';
 import 'package:memory_app/media_viewer/photo_open_transition.dart';
 import 'package:memory_app/presentation/memory_candidate_copy_mapper.dart';
@@ -27,6 +28,7 @@ class MemoryDetailPage extends StatelessWidget {
     required this.repository,
     required this.ranker,
     required this.contextAssets,
+    this.editStore,
   });
 
   final MemoryCandidate candidate;
@@ -37,6 +39,7 @@ class MemoryDetailPage extends StatelessWidget {
   final MediaRepository repository;
   final MemoryRanker ranker;
   final List<MediaAsset> contextAssets;
+  final EditRecipeStore? editStore;
 
   void _openViewer(
     BuildContext context,
@@ -60,6 +63,7 @@ class MemoryDetailPage extends StatelessWidget {
           memoryScopeLabel: const MemoryCandidateCopyMapper()
               .map(candidate, AppLocalizations.of(context)!)
               .title,
+          editStore: editStore,
         ),
       ),
     );

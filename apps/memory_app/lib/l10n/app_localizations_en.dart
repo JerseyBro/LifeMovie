@@ -167,6 +167,135 @@ class AppLocalizationsEn extends AppLocalizations {
   String get viewerRetry => 'Retry';
 
   @override
+  String get viewerFavorite => 'Favorite';
+
+  @override
+  String get viewerShare => 'Share';
+
+  @override
+  String get viewerInfo => 'Info';
+
+  @override
+  String get viewerEdit => 'Edit';
+
+  @override
+  String get viewerVideoPlay => 'Play';
+
+  @override
+  String get viewerVideoPause => 'Pause';
+
+  @override
+  String get viewerVideoMute => 'Mute';
+
+  @override
+  String get viewerVideoUnmute => 'Unmute';
+
+  @override
+  String get viewerVideoUnavailable => 'This video can\'t be played right now';
+
+  @override
+  String get infoTitle => 'Photo Info';
+
+  @override
+  String get infoDate => 'Date';
+
+  @override
+  String get infoTime => 'Time';
+
+  @override
+  String get infoLocation => 'Location';
+
+  @override
+  String get infoType => 'Type';
+
+  @override
+  String get infoSize => 'Dimensions';
+
+  @override
+  String get infoDuration => 'Duration';
+
+  @override
+  String get infoMemory => 'Memory';
+
+  @override
+  String get infoTypePhoto => 'Photo';
+
+  @override
+  String get infoTypeVideo => 'Video';
+
+  @override
+  String get infoTypeLivePhoto => 'Live Photo';
+
+  @override
+  String get editorCancel => 'Cancel';
+
+  @override
+  String get editorDone => 'Done';
+
+  @override
+  String get editorTabAdjust => 'Adjust';
+
+  @override
+  String get editorTabFilter => 'Filters';
+
+  @override
+  String get editorTabCrop => 'Crop';
+
+  @override
+  String get editorExposure => 'Exposure';
+
+  @override
+  String get editorBrightness => 'Brightness';
+
+  @override
+  String get editorContrast => 'Contrast';
+
+  @override
+  String get editorHighlights => 'Highlights';
+
+  @override
+  String get editorShadows => 'Shadows';
+
+  @override
+  String get editorSaturation => 'Saturation';
+
+  @override
+  String get editorWarmth => 'Warmth';
+
+  @override
+  String get editorFilterNone => 'None';
+
+  @override
+  String get editorFilterVivid => 'Vivid';
+
+  @override
+  String get editorFilterWarm => 'Warm';
+
+  @override
+  String get editorFilterCool => 'Cool';
+
+  @override
+  String get editorFilterMono => 'Mono';
+
+  @override
+  String get editorRotateLeft => 'Rotate left';
+
+  @override
+  String get editorRotateRight => 'Rotate right';
+
+  @override
+  String get editorStraighten => 'Straighten';
+
+  @override
+  String get editorAspectFree => 'Free';
+
+  @override
+  String get editorAspectSquare => 'Square';
+
+  @override
+  String get editorReset => 'Reset';
+
+  @override
   String get dateClusterTitle => 'These days left many photos.';
 
   @override

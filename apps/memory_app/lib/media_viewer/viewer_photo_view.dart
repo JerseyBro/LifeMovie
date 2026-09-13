@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/physics.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:memory_app/l10n/app_localizations.dart';
+import 'package:memory_app/media_editor/edit_render.dart';
 import 'package:memory_app/media_viewer/viewer_gesture_policy.dart';
 import 'package:memory_app/media_viewer/viewer_media_loader.dart';
 import 'package:memory_app/media_viewer/viewer_photo_gestures.dart';
@@ -28,6 +29,7 @@ class ViewerPhotoView extends StatefulWidget {
     required this.onDoubleTap,
     this.initialThumb,
     this.maxZoom = 5.0,
+    this.recipe,
   });
 
   final ViewerMediaLoader loader;
@@ -41,6 +43,10 @@ class ViewerPhotoView extends StatefulWidget {
   final VoidCallback onDoubleTap;
   final Uint8List? initialThumb;
   final double maxZoom;
+
+  /// Non-destructive edit metadata; rendered as color matrix + quarter-turn
+  /// rotation. Crop/straighten stay editor-only in V1.
+  final EditRecipe? recipe;
 
   @override
   State<ViewerPhotoView> createState() => _ViewerPhotoViewState();
@@ -373,7 +379,8 @@ class _ViewerPhotoViewState extends State<ViewerPhotoView>
     final thumb = widget.initialThumb ?? widget.loader.thumbFor(widget.index);
     final preview = widget.loader.previewFor(widget.index);
     final failed = widget.loader.isPreviewFailed(widget.index);
-    return Stack(
+    final recipe = widget.recipe;
+    final layers = Stack(
       fit: StackFit.expand,
       children: [
         if (thumb != null)
@@ -402,6 +409,20 @@ class _ViewerPhotoViewState extends State<ViewerPhotoView>
             onRetry: () => widget.loader.retryPreview(widget.index),
           ),
       ],
+    );
+    if (recipe == null || recipe.isIdentity) return layers;
+    Widget rendered = layers;
+    if (recipe.rotationQuarterTurns % 4 != 0) {
+      rendered = RotatedBox(
+        quarterTurns: recipe.rotationQuarterTurns % 4,
+        child: rendered,
+      );
+    }
+    return ColorFiltered(
+      colorFilter: ColorFilter.matrix(
+        colorMatrixFor(recipe.adjustments, recipe.filter),
+      ),
+      child: rendered,
     );
   }
 }

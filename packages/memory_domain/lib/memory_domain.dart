@@ -1,5 +1,7 @@
 library;
 
+export 'edit_recipe.dart';
+
 import 'dart:convert';
 
 import 'package:crypto/crypto.dart';

@@ -159,6 +159,135 @@ class AppLocalizationsZh extends AppLocalizations {
   String get viewerRetry => '重试';
 
   @override
+  String get viewerFavorite => '收藏';
+
+  @override
+  String get viewerShare => '分享';
+
+  @override
+  String get viewerInfo => '简介';
+
+  @override
+  String get viewerEdit => '编辑';
+
+  @override
+  String get viewerVideoPlay => '播放';
+
+  @override
+  String get viewerVideoPause => '暂停';
+
+  @override
+  String get viewerVideoMute => '静音';
+
+  @override
+  String get viewerVideoUnmute => '取消静音';
+
+  @override
+  String get viewerVideoUnavailable => '该视频暂时无法播放';
+
+  @override
+  String get infoTitle => '照片信息';
+
+  @override
+  String get infoDate => '日期';
+
+  @override
+  String get infoTime => '时间';
+
+  @override
+  String get infoLocation => '地点';
+
+  @override
+  String get infoType => '类型';
+
+  @override
+  String get infoSize => '尺寸';
+
+  @override
+  String get infoDuration => '时长';
+
+  @override
+  String get infoMemory => '所属记忆';
+
+  @override
+  String get infoTypePhoto => '照片';
+
+  @override
+  String get infoTypeVideo => '视频';
+
+  @override
+  String get infoTypeLivePhoto => 'Live Photo';
+
+  @override
+  String get editorCancel => '取消';
+
+  @override
+  String get editorDone => '完成';
+
+  @override
+  String get editorTabAdjust => '调整';
+
+  @override
+  String get editorTabFilter => '滤镜';
+
+  @override
+  String get editorTabCrop => '裁剪';
+
+  @override
+  String get editorExposure => '曝光';
+
+  @override
+  String get editorBrightness => '亮度';
+
+  @override
+  String get editorContrast => '对比度';
+
+  @override
+  String get editorHighlights => '高光';
+
+  @override
+  String get editorShadows => '阴影';
+
+  @override
+  String get editorSaturation => '饱和度';
+
+  @override
+  String get editorWarmth => '色温';
+
+  @override
+  String get editorFilterNone => '原片';
+
+  @override
+  String get editorFilterVivid => '鲜明';
+
+  @override
+  String get editorFilterWarm => '暖调';
+
+  @override
+  String get editorFilterCool => '冷调';
+
+  @override
+  String get editorFilterMono => '黑白';
+
+  @override
+  String get editorRotateLeft => '向左旋转';
+
+  @override
+  String get editorRotateRight => '向右旋转';
+
+  @override
+  String get editorStraighten => '拉直';
+
+  @override
+  String get editorAspectFree => '自由';
+
+  @override
+  String get editorAspectSquare => '方形';
+
+  @override
+  String get editorReset => '还原';
+
+  @override
   String get dateClusterTitle => '这几天留下了很多照片。';
 
   @override
