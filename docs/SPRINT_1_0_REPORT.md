@@ -1,8 +1,8 @@
 # Sprint 1.0 Report — Native Media Experience & Memory Discovery
 
-Status: 机器验证完成，真机 Gate 待人工执行
+Status: 机器验证完成（含 iOS Release Build），真机 Gate 待人工执行
 Branch: `feat/native-memory-experience-v1.0`（自 `feat/product-experience-v0.9` @ `11bc600` 检出）
-Date: 2026-09-14
+Date: 2026-09-14（Final Release Gate 轮更新）
 
 ---
 
@@ -13,8 +13,9 @@ Date: 2026-09-14
 | 分支 | `feat/native-memory-experience-v1.0` |
 | Base | `feat/product-experience-v0.9` @ `11bc600`（远端已验证阶段 HEAD） |
 | 检出方式 | 保留 0.9 成果作为 checkpoint，未动 main |
-| working tree | 仅 `CLAUDE.md` 保持 untracked（未修改未提交） |
+| working tree | 仅 `CLAUDE.md` / `.DS_Store` 保持 untracked（未修改未提交） |
 | remote | `https://github.com/JerseyBro/LifeMovie.git` |
+| 远端分支 | 本轮修复：远端此前**不存在**该分支；已 `git push -u origin feat/native-memory-experience-v1.0` 并验证 `LOCAL == REMOTE == 33ab366` |
 
 ## 2. Benchmark（PART G）
 
@@ -84,14 +85,14 @@ Date: 2026-09-14
 | media_library tests | 11/11 通过 |
 | memory_engine tests | 48/48 通过（含 Sprint 0.8.1 全部回归 + 15 项 discovery 查询测试） |
 | memory_app tests | 54/54 通过（viewer 手势/加载、editor 非破坏性、discovery controller/timeline、既有 copy/perf/vertical slice） |
-| iOS release build（--no-codesign） | 环境受限未执行，见 §12；Swift 语法解析通过，pod install 成功 |
+| iOS release build（--no-codesign） | **PASS**（Final Release Gate 轮完成，详见 §12） |
 
 新增测试文件：`viewer_gesture_policy_test.dart`、`viewer_media_loader_test.dart`、`media_viewer_page_test.dart`（移植+扩充）、`media_editor_test.dart`、`discovery_home_test.dart`、engine `discovery_query_test.dart`。
 既有测试断言零修改（media_library 仅补 4 个新接口方法的 mock 实现）。
 
 ## 9. Device（Gate 8/9 — 待人工执行）
 
-以下 Gate 依赖真机（Jersey 17 Pro Max / iOS 26.6 / 20K+ 真实图库 / release build），机器环境无法替代，按任务要求停止并等待人工验证：
+以下 Gate 依赖真机（Jersey 17 Pro Max / iOS 26.6 / 20K+ 真实图库 / release build），机器环境无法替代，按任务要求停止并等待人工验证。Release build 已于本轮完成（§12.2），安装命令见 §12.2 末尾；设备当前不可达（需插线或同一局域网且解锁）。
 
 **Gate 8 — Media UX**（整体评价，非逐手势问答）：
 - [ ] A / B / C 分级（Sprint 1.0 要求 ≥B，目标 C）
@@ -131,7 +132,40 @@ Date: 2026-09-14
 
 ## 12. 构建记录
 
-- `flutter build ios --release --no-codesign`：**未能执行**。原因：本机 Xcode 未安装 iOS 26.5 平台组件（物理设备与模拟器 destination 均无法解析，`xcrun simctl list runtimes` 为空）。属环境限制，非代码错误；`pod install` 成功（video_player_avfoundation 解析正常）。
-- 替代验证：`xcrun swiftc -parse AppDelegate.swift` 语法解析通过（exit 0）；Dart 侧经 `flutter analyze` + 全量测试覆盖。
-- **待人工**：在 Xcode Settings > Components 安装 iOS 26.5 平台后执行
-  `flutter build ios --release --no-codesign`，确认 AppDelegate 新增 channel 方法（setFavorite / presentShareSheet / loadVideoPlaybackUrl / loadPlaceLabel）的完整类型检查与 Release 链接。
+### 12.1 历史记录（上一轮）
+
+- 上一轮 `flutter build ios --release --no-codesign` 未能执行，原因为本机 Xcode 未安装 iOS 26.5 平台组件。当时以 `xcrun swiftc -parse` 替代验证，并注明待平台组件安装后补跑。
+
+### 12.2 Final Release Gate 轮（2026-09-14）
+
+**环境已恢复**：Xcode 26.6（17F113）/ iOS SDK 26.5 已安装，`xcodebuild -showsdks`、`xcrun simctl list runtimes`（iOS 26.5）、`flutter doctor -v`（Flutter 3.44.4 / Dart 3.12.2 / CocoaPods 1.16.2）全部正常，无 ENVIRONMENT BLOCKER。
+
+**Release Build 结果：PASS**
+
+- 工具链下构建尝试两次均确定性停滞于 dSYM 生成阶段（`dsymutil` 对 `App.framework` 与 `native_assets/objective_c.framework` 零 CPU 挂起，Runner.app 本体已产出）。
+- 独立重放 + 二分定位（详见下）确认与代码无关：同一二进制在 `/tmp` 及 `/Users/yvonne` 下 dsymutil 均正常完成（exit 0）。
+- **根因**：`/Users/yvonne/Documents/CodeX` 目录 vnode 在内核层卡死——该目录 `stat`/路径 lookup 正常，但 `opendir`/readdir 永久阻塞；dsymutil 的 CFBundle bundle 探测会从产物目录逐级向上 opendir，撞上该节点即挂起。非挂载点、非 iCloud Desktop/Documents 同步（均关闭）、重启 mediaanalysisd 后依旧。已隔离在内核中，**需重启系统清除**。
+- **绕过方案（已验证）**：以同一 HEAD `33ab366` 克隆仓库至健康路径 `/Users/yvonne/.lifemovie_build/lifemovie`，`flutter pub get` + `pod install` + `flutter build ios --release --no-codesign` **完整通过**：
+
+```
+Xcode build done.                                           29.6s
+✓ Built build/ios/iphoneos/Runner.app (19.8MB)
+BUILD_EXIT=0
+```
+
+- 构建日志无 warning / error（仅 --no-codesign 标准提示）。Swift 编译、插件注册、4 个新 native channel（setFavorite / presentShareSheet / loadVideoPlaybackUrl / loadPlaceLabel）、AVFoundation / PhotoKit / UIKit、CocoaPods、linker、generated registrant 全部经 Release 完整类型检查与链接。
+- 产物：`/Users/yvonne/.lifemovie_build/lifemovie/apps/memory_app/build/ios/iphoneos/Runner.app`，19.8MB，bundle `com.lifemovie.memoryApp`，version 1.0.0 (1)，构建时间 2026-09-14 12:36。
+- 仓库内**无任何代码修改**（本轮修复为零代码 diff；报告文档更新除外）。
+
+**待人工（GATE 9 真机安装）**：
+
+```bash
+xcrun devicectl device install app \
+  --device D5D7955B-6AB4-5F3C-ADB9-C08F6E3D7C73 \
+  /Users/yvonne/.lifemovie_build/lifemovie/apps/memory_app/build/ios/iphoneos/Runner.app
+xcrun devicectl device process launch \
+  --device D5D7955B-6AB4-5F3C-ADB9-C08F6E3D7C73 \
+  com.lifemovie.memoryApp
+```
+
+设备当前 `unavailable`（未插线 / 无线不可达）。建议先重启本机清除 CodeX vnode 卡死，之后可直接在原工作区重新构建，产物路径回到常规 `build/ios/iphoneos/`。
