@@ -10,3 +10,12 @@ DerivedData/
 Pods/
 Podfile.lock
 **/.flutter-plugins-dependencies
+
+# JAES Lite 生成缓存与本地私有文档
+.jaes/
+.opencode/
+.cursor/
+.clinerules/
+.kilo/
+NUR.md
+JerseyDocs/
